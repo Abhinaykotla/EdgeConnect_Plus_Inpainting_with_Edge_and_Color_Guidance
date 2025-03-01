@@ -1,0 +1,122 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+\usepackage{hyperref}
+
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs} % For better tables
+
+% Define paper ID
+\cvprfinalcopy 
+
+\begin{document}
+
+%%%%%%%%% TITLE
+\title{EdgeConnect+: Adversarial Inpainting with Edge and Color Guidance}
+
+\author{
+University of Texas at Arlington\\
+Abhinay Kotla, Sanjana Ravi Prakash\\
+{\tt\small axk5827@mavs.uta.edu, sxr8375@mavs.uta.edu}
+}
+
+\maketitle
+\thispagestyle{empty}
+
+%%%%%%%%% INTRODUCTION
+\section{Introduction}
+Image inpainting is a fundamental problem in computer vision, with applications in photo restoration, object removal, and image editing. The goal of inpainting is to fill missing regions in an image with visually plausible content that is structurally and semantically consistent. 
+
+Traditional approaches to image inpainting include diffusion-based methods \cite{ballester2001filling, bertalmio2000image}, patch-based synthesis \cite{darabi2012image}, and segmentation-based techniques \cite{esedoglu2002digital}. While these methods can work well in specific scenarios, they often struggle with complex textures and large missing regions. Deep learning-based techniques \cite{pathak2016context} have shown significant improvements, with generative adversarial networks (GANs) \cite{goodfellow2014gan} further enhancing the realism of inpainted images.
+
+One of the most effective deep learning-based inpainting methods is EdgeConnect \cite{nazeri2019edgeconnect}, which utilizes an edge generator to predict missing structures before performing image completion. However, EdgeConnect primarily focuses on structural accuracy and does not explicitly incorporate color information, often leading to unnatural texture transitions. To address this, we propose an enhancement to EdgeConnect by integrating color guidance in addition to edge information. 
+
+Our model consists of a three-step process: (1) an edge generator predicts missing edges based on available structures, (2) a Gaussian-blurred color map provides contextual color information, and (3) the generated edges and color hints are merged to reconstruct the missing regions. We evaluate our approach on the CelebA and Places2 datasets, which contain diverse facial and scene images.
+
+%%%%%%%%% PROBLEM STATEMENT
+\section{Problem Description}
+Image inpainting models should generate visually coherent and semantically meaningful completions for missing regions. A key challenge in this task is to ensure structural coherence, where the generated content aligns with the global structure of the image. Additionally, color consistency is critical to avoid noticeable seams or artifacts that arise due to poor blending of inpainted areas with their surroundings. Existing approaches often struggle with generalization, performing well on specific datasets but failing when applied to diverse scenes or facial images. Our goal is to develop an inpainting model that effectively integrates both structural and color information, enabling it to restore missing regions while maintaining realism across different types of image.
+
+\subsection{Proposed Approach}
+Our method consists of three main stages:
+
+\begin{enumerate}
+    \item Edge generation: A generative adversarial network (G1) predicts missing edges based on the visible structure of the image.
+    \item Color map generation: A Gaussian blur is applied to the original image to propagate color information into missing areas, forming a low-frequency color map.
+    \item Final inpainted image generation: A second generative adversarial network (G2) reconstructs the final inpainted image using the edge and color information from the above steps.
+\end{enumerate}
+
+%%%%%%%%% DATASET DESCRIPTION
+\section{Datasets}
+We use two data sets to evaluate the proposed approach:
+
+\subsection{CelebA}
+The CelebA dataset \cite{liu2015faceattributes} consists of 202,599 facial images with various attributes such as pose, expression, and illumination. This data set is ideal for face-in-painting tasks, where missing facial features need to be reconstructed accurately.
+
+\subsection{Places2}
+The Places2 dataset \cite{zhou2017places} contains 1.8 million scene images in 365 categories. It provides a diverse set of backgrounds, buildings, landscapes, and interiors, making it suitable for general image-inpainting tasks.
+
+Both data sets include a train/test split, and we use randomly generated masks of varying sizes and shapes to simulate missing regions.
+
+%%%%%%%%% REFERENCES
+{\small
+\bibliographystyle{ieee_fullname}
+\begin{thebibliography}{99}
+
+\bibitem{ballester2001filling}
+C. Ballester, M. Bertalmio, V. Caselles, G. Sapiro, and J. Verdera.
+Filling-in by joint interpolation of vector fields and gray levels.
+\textit{IEEE Transactions on Image Processing}, 10(8):1200–1211, 2001.
+
+\bibitem{bertalmio2000image}
+M. Bertalmio, G. Sapiro, V. Caselles, and C. Ballester.
+Image inpainting.
+In \textit{Proceedings of the 27th Annual Conference on Computer Graphics and Interactive Techniques}, pages 417–424, 2000.
+
+\bibitem{darabi2012image}
+S. Darabi, E. Shechtman, C. Barnes, D. B. Goldman, and P. Sen.
+Image melding: Combining inconsistent images using patch-based synthesis.
+\textit{ACM Transactions on Graphics (TOG)}, 31(4):82–1, 2012.
+
+\bibitem{esedoglu2002digital}
+S. Esedoglu and J. Shen.
+Digital inpainting based on the Mumford–Shah–Euler image model.
+\textit{European Journal of Applied Mathematics}, 13(4):353–370, 2002.
+
+\bibitem{pathak2016context}
+D. Pathak, P. Krahenbuhl, J. Donahue, T. Darrell, and A. A. Efros.
+Context encoders: Feature learning by inpainting.
+In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 2536–2544, 2016.
+
+\bibitem{liu2018partialconv}
+G. Liu, F. A. Reda, K. J. Shih, T.-C. Wang, A. Tao, and B. Catanzaro.
+Image inpainting for irregular holes using partial convolutions.
+In \textit{European Conference on Computer Vision (ECCV)}, September 2018.
+
+\bibitem{goodfellow2014gan}
+I. Goodfellow, J. Pouget-Abadie, M. Mirza, B. Xu, D. Warde-Farley, S. Ozair, A. Courville, and Y. Bengio.
+Generative adversarial networks.
+\textit{arXiv preprint arXiv:1406.2661}, 2014.
+
+\bibitem{nazeri2019edgeconnect}
+K. Nazeri, E. Ng, T. Joseph, F. Qureshi, and M. Ebrahimi.
+EdgeConnect: Generative image inpainting with adversarial edge learning.
+\textit{arXiv preprint arXiv:1901.00212}, 2019.
+
+\bibitem{liu2015faceattributes}
+Z. Liu, P. Luo, X. Wang, and X. Tang.
+Deep learning face attributes in the wild.
+In \textit{International Conference on Computer Vision (ICCV)}, 2015.
+
+\bibitem{zhou2017places}
+B. Zhou, A. Lapedriza, A. Khosla, A. Oliva, and A. Torralba.
+Places: A 10 million image database for scene recognition.
+In \textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}, 2017.
+
+\end{thebibliography}
+}
+
+\end{document}
