@@ -10,10 +10,59 @@ def apply_canny(image):
     """
     Apply Canny edge detection to an image.
     """
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if image.ndim == 3 else image
+    # Ensure image is in the right format for Canny
+    if image.ndim == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Convert to uint8 if needed
+    if image.dtype != np.uint8:
+        if np.max(image) <= 1.0:
+            image = (image * 255).astype(np.uint8)
+        else:
+            image = image.astype(np.uint8)
+            
+    # Apply Canny edge detection
     edges = cv2.Canny(image, 50, 150)
-    edges = (255 - edges).astype(np.float32) / 255.0  # Normalize to [0, 1]
+    
+    # Invert and normalize to [0, 1] for the edge map
+    edges = (255 - edges).astype(np.float32) / 255.0
     return edges
+
+def remove_mask_egde(mask, img):
+    """
+    Remove the edges of the mask in the edge image by painting white (1.0)
+    where the dilated mask indicates missing regions.
+    """
+    # Convert mask to numpy if it's a tensor
+    if isinstance(mask, torch.Tensor):
+        mask_np = mask.squeeze().cpu().numpy()  # Shape: (H, W)
+    else:
+        mask_np = mask.squeeze() if hasattr(mask, 'squeeze') else mask
+    
+    # Convert img to numpy if it's a tensor
+    if isinstance(img, torch.Tensor):
+        img_np = img.squeeze().cpu().numpy()  # Shape: (H, W)
+    else:
+        img_np = img.squeeze() if hasattr(img, 'squeeze') else img
+    
+    # Make sure mask is in the proper format [0-255] with 0 for missing pixels
+    # If mask is in [0,1] range with 0 for missing pixels, convert to [0,255]
+    if mask_np.max() <= 1.0 and np.min(mask_np) >= 0:
+        mask_np = mask_np * 255
+
+    # Binary mask: 1 for missing pixels (where mask == 0), 0 for known pixels
+    binary_mask = (mask_np < 10).astype(np.float32)
+    
+    # Dilate the binary mask
+    kernel = np.ones((5, 5), np.uint8)
+    binary_mask_uint8 = (binary_mask * 255).astype(np.uint8)
+    dilated_mask_uint8 = cv2.dilate(binary_mask_uint8, kernel, iterations=1)
+    dilated_mask = dilated_mask_uint8.astype(np.float32) / 255.0
+    
+    # Paint white (1.0) where dilated mask indicates missing pixels
+    result = np.where(dilated_mask > 0.5, 1.0, img_np)
+    
+    return result
 
 class EdgeConnectDataset_G1(Dataset):
     def __init__(self, input_dir, gt_dir, image_size=256, use_mask=False):
@@ -50,32 +99,24 @@ class EdgeConnectDataset_G1(Dataset):
         gt_img = cv2.resize(gt_img, (self.image_size, self.image_size))
 
         # Extract mask: Consider pixels as missing if all RGB values > 240
-        mask = np.all(input_img > 245, axis=-1).astype(np.float32) # Shape: (H, W)
-        mask = 255 - mask * 255  # Invert mask (0s for missing pixels, 255s for known pixels)
+        mask_binary = np.all(input_img > 245, axis=-1).astype(np.float32) # Shape: (H, W)
+        mask = 255 - mask_binary * 255  # Invert mask (0s for missing pixels, 255s for known pixels)
         mask = torch.from_numpy(mask).unsqueeze(0)  # Shape: (1, H, W)
-
-        # Create dilated mask for edge detection
-        # First convert back to numpy for OpenCV operations
-        mask_np = mask.squeeze(0).numpy()
-        dilated_mask = cv2.dilate(mask_np, np.ones((5, 5), np.uint8), iterations=1)  # Dilate mask for inpainting
-
-        print("Dilated Mask Shape:", dilated_mask.shape)
-        print("min and max values:", dilated_mask.min(), dilated_mask.max())
 
         # Generate Edge Maps
         input_edge = apply_canny(input_img)  # Edges from masked image
         
-        # Multiply with dilated mask (both are numpy arrays)
-        input_edge = input_edge * dilated_mask  # Zero out edges outside mask
+        # Apply mask edge removal
+        input_edge = remove_mask_egde(mask, input_edge)
 
         gt_edge = apply_canny(gt_img)  # Edges from ground truth image
 
         # Convert to Tensors if not already
         if not isinstance(input_edge, torch.Tensor):
-            input_edge = torch.from_numpy(input_edge).unsqueeze(0)  # Shape: (1, H, W)
+            input_edge = torch.from_numpy(input_edge).float().unsqueeze(0)  # Shape: (1, H, W)
         
         if not isinstance(gt_edge, torch.Tensor):
-            gt_edge = torch.from_numpy(gt_edge).unsqueeze(0)  # Shape: (1, H, W)
+            gt_edge = torch.from_numpy(gt_edge).float().unsqueeze(0)  # Shape: (1, H, W)
 
         # Return mask if enabled
         if self.use_mask:
