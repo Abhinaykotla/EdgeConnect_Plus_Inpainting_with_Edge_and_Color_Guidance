@@ -14,10 +14,15 @@ class Config:
         self.VERBOSE = 1
 
         # Data Paths (Convert to Absolute Paths)
-        self.TRAIN_IMAGES = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/train"))
-        self.TEST_IMAGES = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/test"))
-        self.VAL_IMAGES = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/val"))
-        self.MASKS_PATH = os.path.abspath(os.path.join(base_dir, "data_archive/Masks/train"))
+        self.TRAIN_IMAGES_GT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/train_gt"))
+        self.TRAIN_IMAGES_INPUT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/train_input"))
+
+        self.TEST_IMAGES_GT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/test_gt"))
+        self.TEST_IMAGES_INPUT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/test_input"))
+
+        self.VAL_IMAGES_GT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/val_gt"))
+        self.VAL_IMAGES_INPUT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/val_input"))
+
 
         # Training Hyperparameters
         self.EPOCHS = 100
