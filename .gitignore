@@ -1,4 +1,3 @@
-# Ignore the datasets folder
 data_archive/
 dev/
 __pycache__/
