@@ -3,8 +3,8 @@ import cv2
 import torch
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
-from config import config  # Import updated config file
+import torch.nn as nn
+from config import config
 
 def apply_canny(image):
     """
@@ -22,7 +22,7 @@ def apply_canny(image):
             image = image.astype(np.uint8)
             
     # Apply Canny edge detection
-    edges = cv2.Canny(image, 50, 150)
+    edges = cv2.Canny(image, config.CANNY_THRESHOLD_LOW, config.CANNY_THRESHOLD_HIGH) # Shape: (H, W)
     
     # Invert and normalize to [0, 1] for the edge map
     edges = (255 - edges).astype(np.float32) / 255.0
@@ -94,11 +94,11 @@ class EdgeConnectDataset_G1(Dataset):
         input_img = cv2.imread(input_path)  # Masked Image
         gt_img = cv2.imread(gt_path)  # Ground Truth Image
 
-        # Resize Images
-        input_img = cv2.resize(input_img, (self.image_size, self.image_size))
-        gt_img = cv2.resize(gt_img, (self.image_size, self.image_size))
+        # # Resize Images
+        # input_img = cv2.resize(input_img, (self.image_size, self.image_size))
+        # gt_img = cv2.resize(gt_img, (self.image_size, self.image_size))
 
-        # Extract mask: Consider pixels as missing if all RGB values > 240
+        # Extract mask: Consider pixels as missing if all RGB values > 245
         mask_binary = np.all(input_img > 245, axis=-1).astype(np.float32) # Shape: (H, W)
         mask = 255 - mask_binary * 255  # Invert mask (0s for missing pixels, 255s for known pixels)
         mask = torch.from_numpy(mask).unsqueeze(0)  # Shape: (1, H, W)
@@ -116,13 +116,29 @@ class EdgeConnectDataset_G1(Dataset):
             input_edge = torch.from_numpy(input_edge).float().unsqueeze(0)  # Shape: (1, H, W)
         
         if not isinstance(gt_edge, torch.Tensor):
-            gt_edge = torch.from_numpy(gt_edge).float().unsqueeze(0)  # Shape: (1, H, W)
+            gt_edge = torch.from_numpy(gt_edge).float().unsqueeze(0)  # Shape: (1, H, W)\
 
-        # Return mask if enabled
+            # # Resize gt_edge for discriminator
+            # downsample = nn.MaxPool2d(kernel_size=8, stride=8)  # 256x256 → 32x32
+            # gt_edge_resized = downsample(gt_edge.unsqueeze(0)).squeeze(0)
+
+
+
+        # Return full-res and resized ground truth edges
         if self.use_mask:
-            return {"input_edge": input_edge, "gt_edge": gt_edge, "mask": mask}
-
-        return {"input_edge": input_edge, "gt_edge": gt_edge}
+            mask = mask / 255.0  # Normalize mask to [0, 1]
+            return {
+                "input_edge": input_edge, 
+                "gt_edge": gt_edge,  # Full-size GT edges
+                # "gt_edge_resized": gt_edge_resized,  # Resized for Discriminator
+                "mask": mask
+            }
+        else:
+            return {
+                "input_edge": input_edge,
+                "gt_edge": gt_edge,  
+                # "gt_edge_resized": gt_edge_resized
+            }
 
 # Initialize DataLoader for G1 with optional mask input
 def get_dataloader_g1(split="train", use_mask=False):
