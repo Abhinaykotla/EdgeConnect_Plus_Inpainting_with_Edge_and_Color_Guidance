@@ -22,7 +22,7 @@ def apply_canny(image):
             image = image.astype(np.uint8)
             
     # Apply Canny edge detection
-    edges = cv2.Canny(image, 50, 150)
+    edges = cv2.Canny(image, config.CANNY_THRESHOLD_LOW, config.CANNY_THRESHOLD_HIGH) # Shape: (H, W)
     
     # Invert and normalize to [0, 1] for the edge map
     edges = (255 - edges).astype(np.float32) / 255.0
