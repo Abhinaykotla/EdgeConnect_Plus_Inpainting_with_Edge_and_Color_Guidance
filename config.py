@@ -38,6 +38,7 @@ class Config:
         self.DEBUG = 0  
         self.VERBOSE = 1
         self.MODEL_CHECKPOINT_DIR = os.path.abspath(os.path.join(base_dir, "models/checkpoints"))
+        self.GEN_SAMPLES_DIR = os.path.abspath(os.path.join(base_dir, "models/generated_samples"))
 
         # Loss Weights (Optimized)
         self.L1_LOSS_WEIGHT = 2.0  # Reduced for better stability
