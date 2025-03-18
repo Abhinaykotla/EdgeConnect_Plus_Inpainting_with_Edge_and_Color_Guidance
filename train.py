@@ -2,49 +2,48 @@ import time
 import os
 import torch
 import torch.nn.functional as F
+import json
+import glob
 import matplotlib.pyplot as plt
 from dataloader import get_dataloader_g1
-from g1_model import adversarial_loss, l1_loss
-from g1_model import EdgeGenerator, EdgeDiscriminator
+from g1_model import adversarial_loss, l1_loss, EdgeGenerator, EdgeDiscriminator
 from config import config
 
-# Function to save generated images (for training & validation)
-def save_generated_images(epoch, input_edges, masks, gt_edges, pred_edges, save_dir="data_archive/generated_samples", mode="train"):
-    os.makedirs(save_dir, exist_ok=True)  # Create folder if it doesn't exist
-    batch_size = input_edges.shape[0]
+# Directory for saving checkpoints
+CHECKPOINT_DIR = config.MODEL_CHECKPOINT_DIR
+os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
-    # Normalize for visualization
-    input_edges = input_edges.cpu().detach()
-    masks = masks.cpu().detach()
-    gt_edges = gt_edges.cpu().detach()
-    pred_edges = pred_edges.cpu().detach()
+# Function to save model and training history
+def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history):
+    checkpoint = {
+        "epoch": epoch,
+        "g1_state_dict": g1.state_dict(),
+        "d1_state_dict": d1.state_dict(),
+        "optimizer_g": optimizer_g.state_dict(),
+        "optimizer_d": optimizer_d.state_dict(),
+        "best_loss": best_loss,
+        "history": history,
+    }
 
-    for i in range(min(batch_size, 5)):  # Save 5 sample images
-        fig, axes = plt.subplots(1, 4, figsize=(16, 4))  # 4 images in a row
+    # Save the checkpoint file
+    checkpoint_path = os.path.join(CHECKPOINT_DIR, f"checkpoint_epoch_{epoch}.pth")
+    torch.save(checkpoint, checkpoint_path)
+    print(f"✅ Checkpoint saved: {checkpoint_path}")
 
-        # Input Edges
-        axes[0].imshow(input_edges[i].squeeze(), cmap="gray")
-        axes[0].set_title(f"{mode.upper()} Input")
-        
-        # Mask
-        axes[1].imshow(masks[i].squeeze(), cmap="gray")
-        axes[1].set_title(f"{mode.upper()} Mask")
+    # Save training history separately
+    history_path = os.path.join(CHECKPOINT_DIR, "training_history.json")
+    with open(history_path, "w") as f:
+        json.dump(history, f)
 
-        # Ground Truth Edges
-        axes[2].imshow(gt_edges[i].squeeze(), cmap="gray")
-        axes[2].set_title(f"{mode.upper()} Ground Truth")
+    # Keep only the last 3 best checkpoints
+    manage_checkpoints()
 
-        # Generated Edges
-        axes[3].imshow(pred_edges[i].squeeze(), cmap="gray")
-        axes[3].set_title(f"{mode.upper()} Generated")
-
-        for ax in axes:
-            ax.axis("off")
-
-        # Save image
-        save_path = os.path.join(save_dir, f"{mode}_epoch_{epoch}_sample_{i}.png")
-        plt.savefig(save_path)
-        plt.close(fig)  # Close figure to free memory
+# Function to keep only the last 3 best checkpoints
+def manage_checkpoints():
+    checkpoint_files = sorted(glob.glob(os.path.join(CHECKPOINT_DIR, "checkpoint_epoch_*.pth")), key=os.path.getmtime)
+    if len(checkpoint_files) > 3:
+        os.remove(checkpoint_files[0])  # Remove the oldest checkpoint
+        print(f"🗑️ Deleted old checkpoint: {checkpoint_files[0]}")
 
 
 if __name__ == '__main__':
@@ -76,17 +75,19 @@ if __name__ == '__main__':
     train_dataloader = get_dataloader_g1(split="train", use_mask=True)
     val_dataloader = get_dataloader_g1(split="val", use_mask=True)  
 
-    # Training Loop
-    num_epochs = config.EPOCHS
-    
+    # Load checkpoint if available
+    start_epoch, best_g1_loss, history = load_checkpoint(g1, d1, optimizer_g, optimizer_d)
+
     # Early Stopping Parameters
     patience = config.EARLY_STOP_PATIENCE
     epochs_no_improve = 0
 
+    # Training Loop
+    num_epochs = config.EPOCHS
     start_time = time.time()
 
     print(f"🔹 Starting Training for {num_epochs} Epochs on {config.DEVICE}...\n")
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs + 1):
         epoch_start_time = time.time()
         total_g_loss = 0.0
         total_d_loss = 0.0
@@ -141,41 +142,29 @@ if __name__ == '__main__':
             total_g_loss += loss_g.item()
             total_d_loss += loss_d.item()
 
-            # Print progress every 50 batches
-            if (batch_idx + 1) % 100 == 0:
-                print(f"  🔹 Batch [{batch_idx+1}/{len(train_dataloader)}] - G1 Loss: {loss_g.item():.4f}, D1 Loss: {loss_d.item():.4f}")
+        # Compute average loss for the epoch
+        avg_g1_loss = total_g_loss / len(train_dataloader)
+        avg_d1_loss = total_d_loss / len(train_dataloader)
 
-        # **Save Training Samples Every 5 Epochs**
-        if (epoch + 1) % 2 == 0:
-            print(f"\n📸 Saving Training Samples for Epoch {epoch+1}...\n")
-            save_generated_images(epoch+1, input_edges, mask, gt_edges, pred_edge, mode="train")
+        # Save training history
+        history["g1_loss"].append(avg_g1_loss)
+        history["d1_loss"].append(avg_d1_loss)
 
-        ###### 🔹 Validation Phase ######
-        if (epoch + 1) % 5 == 0:
-            print(f"\n🔍 Running Validation for Epoch {epoch+1}...\n")
-            g1.eval()
-            with torch.no_grad():
-                for val_batch in val_dataloader:
-                    val_input_edges, val_gt_edges, val_mask = (
-                        val_batch["input_edge"].to(config.DEVICE),   
-                        val_batch["gt_edge"].to(config.DEVICE),  
-                        val_batch["mask"].to(config.DEVICE)
-                    )
+        # Save best model checkpoint if G1 loss improves
+        if avg_g1_loss < best_g1_loss:
+            best_g1_loss = avg_g1_loss
+            save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_g1_loss, history)
+            epochs_no_improve = 0  # Reset early stopping counter
+        else:
+            epochs_no_improve += 1
 
-                    val_pred_edge = g1(val_input_edges, val_mask)
-
-                    # Save validation images
-                    save_generated_images(epoch+1, val_input_edges, val_gt_edges, val_pred_edge, val_mask, mode="val")
-                    break  # Save only 1 batch per epoch
-
-                # Early stopping check
+        # Early stopping check
         if epochs_no_improve >= patience:
             print(f"\n⏹️ Early stopping triggered after {patience} epochs without improvement.")
             break
 
-        # End of Epoch: Print Loss and Time
         epoch_end_time = time.time()
         epoch_duration = epoch_end_time - epoch_start_time
-        print(f"\n🔹 Epoch [{epoch+1}/{num_epochs}] Completed in {epoch_duration:.2f}s - G1 Loss: {total_g_loss:.4f}, D1 Loss: {total_d_loss:.4f}\n")
+        print(f"\n🔹 Epoch [{epoch}/{num_epochs}] Completed in {epoch_duration:.2f}s - G1 Loss: {avg_g1_loss:.4f}, D1 Loss: {avg_d1_loss:.4f}\n")
 
     print(f"\n✅ Training Completed in {time.time() - start_time:.2f} seconds.\n")
