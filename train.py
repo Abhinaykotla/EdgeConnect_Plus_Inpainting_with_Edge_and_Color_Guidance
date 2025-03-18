@@ -97,7 +97,7 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d):
         start_epoch = checkpoint["epoch"] + 1
         print(f"🔄 Resuming training from epoch {start_epoch}, Best G1 Loss: {best_loss:.4f}")
         return start_epoch, best_loss, history
-    return 1, float("inf"), {"g1_loss": [], "d1_loss": []}  # If no checkpoint found, start fresh
+    return 1, float("inf"), {"g1_loss": [], "d1_loss": []}
 
 if __name__ == '__main__':
     print("\n🔹 Initializing Model & Training Setup...\n")
@@ -157,17 +157,16 @@ if __name__ == '__main__':
             ###### 🔹 Train Generator (G1) ######
             g1.train()
             optimizer_g.zero_grad()
-
             with torch.amp.autocast(config.DEVICE):  
                 pred_edge = g1(input_edges, mask)  
 
                 # **L1 Loss**
-                g1_loss_l1 = l1_loss(pred_edge, gt_edges) * config.L1_LOSS_WEIGHT
+                g1_loss_l1 = l1_loss(pred_edge, gt_edges) * 100
 
                 # **Adversarial Loss**
                 fake_pred = d1(input_edges, pred_edge)  
-                target_real = torch.ones_like(fake_pred, device=fake_pred.device)
-                g1_loss_adv = adversarial_loss(fake_pred, target_real) * config.ADV_LOSS_WEIGHT
+                target_real = torch.ones_like(fake_pred, device=config.DEVICE) * 0.9  # Smoothed labels
+                g1_loss_adv = adversarial_loss(fake_pred, target_real) * 1  
 
                 loss_g = g1_loss_l1 + g1_loss_adv  
 
@@ -182,11 +181,11 @@ if __name__ == '__main__':
                 real_pred = d1(input_edges, gt_edges)  
                 fake_pred_detached = d1(input_edges, pred_edge.detach())  
 
-                target_fake = torch.zeros_like(fake_pred_detached, device=fake_pred_detached.device)
-
+                target_fake = torch.zeros_like(fake_pred_detached, device=config.DEVICE) + 0.1
                 real_loss = adversarial_loss(real_pred, target_real)
                 fake_loss = adversarial_loss(fake_pred_detached, target_fake)
-                loss_d = (real_loss + fake_loss) / 2  
+
+                loss_d = 0.5 * (real_loss + fake_loss)  # Weighted loss
 
             scaler.scale(loss_d).backward()
             scaler.step(optimizer_d)
