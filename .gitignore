@@ -1,4 +1,9 @@
-data_archive/
-dev/
+logs/
 __pycache__/
 *.pyc
+*.jpg
+*.png
+*.zip
+*.pth
+*.tar
+*.gz
