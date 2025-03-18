@@ -78,6 +78,11 @@ if __name__ == '__main__':
 
     # Training Loop
     num_epochs = config.EPOCHS
+    
+    # Early Stopping Parameters
+    patience = config.EARLY_STOP_PATIENCE
+    epochs_no_improve = 0
+
     start_time = time.time()
 
     print(f"🔹 Starting Training for {num_epochs} Epochs on {config.DEVICE}...\n")
@@ -162,6 +167,11 @@ if __name__ == '__main__':
                     # Save validation images
                     save_generated_images(epoch+1, val_input_edges, val_gt_edges, val_pred_edge, val_mask, mode="val")
                     break  # Save only 1 batch per epoch
+
+                # Early stopping check
+        if epochs_no_improve >= patience:
+            print(f"\n⏹️ Early stopping triggered after {patience} epochs without improvement.")
+            break
 
         # End of Epoch: Print Loss and Time
         epoch_end_time = time.time()
