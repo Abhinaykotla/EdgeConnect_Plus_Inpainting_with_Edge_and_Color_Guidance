@@ -26,30 +26,32 @@ class Config:
         # Logging & Checkpoints
         self.VALIDATION_SAMPLE_EPOCHS = 5  # Updated for faster tracking
         self.TRAINING_SAMPLE_EPOCHS = 1  # Updated for faster tracking
+        self.BATCH_SAMPLING_SIZE = 1000  # Updated for faster/slower tracking
 
         # System Settings
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         self.MODEL_CHECKPOINT_DIR = os.path.abspath(os.path.join(base_dir, "models/checkpoints"))
-        self.GEN_SAMPLES_DIR = os.path.abspath(os.path.join(base_dir, "models/generated_samples"))
+        self.EPOCH_SAMPLES_DIR = os.path.abspath(os.path.join(base_dir, "models/generated_samples/epochs"))
+        self.BATCH_SAMPLES_DIR = os.path.abspath(os.path.join(base_dir, "models/generated_samples/batch"))
+        self.LOSS_PLOT_DIR = os.path.abspath(os.path.join(base_dir, "models/plots"))
 
         self.LEARNING_RATE = 0.0001  
-        self.D2G_LR_RATIO = 0.05  # Reduced to slow down D1
+        self.D2G_LR_RATIO = 0.02  # Reduced to slow down D1
         self.BETA1 = 0.5  
         self.BETA2 = 0.999  
         self.WEIGHT_DECAY = 0.00005  # Reduced for stability
 
+
+        # Loss Weights (Optimized)
+        self.L1_LOSS_WEIGHT = 1  
+        self.ADV_LOSS_WEIGHT = 1
+        self.FM_LOSS_WEIGHT = 10  
+        self.STYLE_LOSS_WEIGHT = 250  
+        self.CONTENT_LOSS_WEIGHT = 1.0  
+
         # Canny Edge Detection Parameters
         self.CANNY_THRESHOLD_LOW = 60
         self.CANNY_THRESHOLD_HIGH = 160
-
-        # Loss Weights (Optimized)
-        self.L1_LOSS_WEIGHT = 2.0  
-        self.ADV_LOSS_WEIGHT = 0.2
-        self.FM_LOSS_WEIGHT = 10.0  
-        self.STYLE_LOSS_WEIGHT = 1.0  
-        self.CONTENT_LOSS_WEIGHT = 1.0  
-
-
 
 
 
