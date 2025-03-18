@@ -189,6 +189,7 @@ if __name__ == '__main__':
     # Use Mixed Precision for Faster Training
     scaler = torch.amp.GradScaler(device=config.DEVICE)
 
+    print("Loading data into Dataloaders")
     # Load datasets
     train_dataloader = get_dataloader_g1(split="train", use_mask=True)
     val_dataloader = get_dataloader_g1(split="val", use_mask=True)  
