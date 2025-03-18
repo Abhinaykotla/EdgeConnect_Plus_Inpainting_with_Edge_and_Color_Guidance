@@ -17,7 +17,7 @@ class Config:
         self.VAL_IMAGES_INPUT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/val_input"))
 
         # Training Hyperparameters
-        self.BATCH_SIZE = 2  
+        self.BATCH_SIZE = 10 
         self.NUM_WORKERS = 4  
         self.EPOCHS = 100  
         self.EARLY_STOP_PATIENCE = 5  # Updated for faster tracking
