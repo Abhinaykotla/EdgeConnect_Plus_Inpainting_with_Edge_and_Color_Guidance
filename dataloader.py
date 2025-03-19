@@ -80,8 +80,8 @@ class EdgeConnectDataset_G1(Dataset):
         self.image_size = image_size
         self.use_mask = use_mask
 
-        self.input_files = sorted(os.listdir(input_dir))
-        self.gt_files = sorted(os.listdir(gt_dir))
+        self.input_files = sorted([f.name for f in os.scandir(input_dir) if f.name.endswith('.jpg')])
+        self.gt_files = sorted([f.name for f in os.scandir(gt_dir) if f.name.endswith('.jpg')])
         
     def __len__(self):
         return len(self.input_files)
@@ -142,17 +142,17 @@ class EdgeConnectDataset_G1(Dataset):
 
 # Initialize DataLoader for G1 with optional mask input
 def get_dataloader_g1(split="train", use_mask=False):
-    if split == "train":
-        dataset = EdgeConnectDataset_G1(config.TRAIN_IMAGES_INPUT, config.TRAIN_IMAGES_GT, config.IMAGE_SIZE, use_mask)
-    elif split == "test":
-        dataset = EdgeConnectDataset_G1(config.TEST_IMAGES_INPUT, config.TEST_IMAGES_GT, config.IMAGE_SIZE, use_mask)
-    elif split == "val":
-        dataset = EdgeConnectDataset_G1(config.VAL_IMAGES_INPUT, config.VAL_IMAGES_GT, config.IMAGE_SIZE, use_mask)
-    else:
+    dataset_paths = {
+        "train": (config.TRAIN_IMAGES_INPUT, config.TRAIN_IMAGES_GT),
+        "test": (config.TEST_IMAGES_INPUT, config.TEST_IMAGES_GT),
+        "val": (config.VAL_IMAGES_INPUT, config.VAL_IMAGES_GT)
+    }
+    if split not in dataset_paths:
         raise ValueError("Invalid dataset split. Choose from 'train', 'test', or 'val'.")
-
-    return DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS, pin_memory=True)
-
+    
+    input_path, gt_path = dataset_paths[split]
+    dataset = EdgeConnectDataset_G1(input_path, gt_path, config.IMAGE_SIZE, use_mask)
+    return DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS, pin_memory=True, prefetch_factor=2)
 
 if __name__ == "__main__":
     # Test DataLoader
