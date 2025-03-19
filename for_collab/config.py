@@ -9,8 +9,8 @@ class Config:
         base_drive_dir = "/content/drive/MyDrive/edgeconnect/"
 
         # Dataset paths in Drive
-        self.TRAIN_IMAGES_GT = "content/CelebA/train_gt"
-        self.TRAIN_IMAGES_INPUT = "content/CelebA/train_input"
+        self.TRAIN_IMAGES_GT = "/content/CelebA/train_gt" 
+        self.TRAIN_IMAGES_INPUT = "/content/CelebA/train_input"
 
         self.TEST_IMAGES_GT = os.path.join(base_drive_dir, "data_archive/CelebA/test_gt")
         self.TEST_IMAGES_INPUT = os.path.join(base_drive_dir, "data_archive/CelebA/test_input")
@@ -19,16 +19,16 @@ class Config:
         self.VAL_IMAGES_INPUT = os.path.join(base_drive_dir, "data_archive/CelebA/val_input")
 
         # Training Hyperparameters
-        self.BATCH_SIZE = 12
-        self.NUM_WORKERS = 6
-        self.EPOCHS = 100
-        self.EARLY_STOP_PATIENCE = 5  # Updated for faster tracking
+        self.BATCH_SIZE = 64
+        self.NUM_WORKERS = 8
+        self.EPOCHS = 250
+        self.EARLY_STOP_PATIENCE = 3  # Updated for faster tracking
         self.IMAGE_SIZE = 256
 
         # Logging & Checkpoints
         self.VALIDATION_SAMPLE_EPOCHS = 5  # Updated for faster tracking
         self.TRAINING_SAMPLE_EPOCHS = 1  # Updated for faster tracking
-        self.BATCH_SAMPLING_SIZE = 50  # Updated for faster/slower tracking
+        self.BATCH_SAMPLING_SIZE = 1000  # Updated for faster/slower tracking
 
         # System Settings
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -46,13 +46,13 @@ class Config:
         # Loss Weights (Optimized)
         self.L1_LOSS_WEIGHT = 1
         self.ADV_LOSS_WEIGHT = 1
-        self.FM_LOSS_WEIGHT = 10
+        self.FM_LOSS_WEIGHT = 5
         self.STYLE_LOSS_WEIGHT = 250
         self.CONTENT_LOSS_WEIGHT = 1.0
 
         # Canny Edge Detection Parameters
-        self.CANNY_THRESHOLD_LOW = 60
-        self.CANNY_THRESHOLD_HIGH = 160
+        self.CANNY_THRESHOLD_LOW = 45
+        self.CANNY_THRESHOLD_HIGH = 140
 
         # GAN Settings
         self.GAN_LOSS = "nsgan"

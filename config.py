@@ -45,13 +45,13 @@ class Config:
         # Loss Weights (Optimized)
         self.L1_LOSS_WEIGHT = 1  
         self.ADV_LOSS_WEIGHT = 1
-        self.FM_LOSS_WEIGHT = 10  
-        self.STYLE_LOSS_WEIGHT = 250  
+        self.FM_LOSS_WEIGHT = 5 
+        self.STYLE_LOSS_WEIGHT = 250
         self.CONTENT_LOSS_WEIGHT = 1.0  
 
         # Canny Edge Detection Parameters
-        self.CANNY_THRESHOLD_LOW = 60
-        self.CANNY_THRESHOLD_HIGH = 160
+        self.CANNY_THRESHOLD_LOW = 45
+        self.CANNY_THRESHOLD_HIGH = 140
 
 
 
