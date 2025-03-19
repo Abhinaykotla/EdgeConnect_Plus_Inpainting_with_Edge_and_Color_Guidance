@@ -71,11 +71,7 @@ def save_losses_to_json(batch_losses, epoch_losses, save_dir):
 # Modify the plot_losses function to only read from files and not save
 def plot_losses(save_dir):
     """
-    Plots and saves comprehensive loss graphs from JSON files.
-    Uses a 2x2 grid with:
-    - Top row (positions 1-2): Single large plot of all batch losses
-    - Bottom left (position 3): Epoch losses 
-    - Bottom right (position 4): G1 and D1 loss components by epoch
+    Plots loss graphs from JSON files with caching
     """
     os.makedirs(save_dir, exist_ok=True)
     
@@ -83,15 +79,39 @@ def plot_losses(save_dir):
     batch_path = os.path.join(save_dir, 'batch_losses.json')
     epoch_path = os.path.join(save_dir, 'epoch_losses.json')
     
-    batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
-    epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
+    # Create plots
+    plt.figure(figsize=(20, 12))
     
-    if os.path.exists(batch_path):
+    # Plot 1: All batch losses (full top row spanning columns 1-2)
+    plt.subplot2grid((2, 2), (0, 0), colspan=2)
+    
+    # Only plot batch losses if the file isn't too large (for performance)
+    if os.path.exists(batch_path) and os.path.getsize(batch_path) < 10_000_000:  # ~10MB limit
         try:
             with open(batch_path, 'r') as f:
                 batch_losses = json.load(f)
+                
+            if batch_losses['batch_idx']:
+                plt.plot(batch_losses['batch_idx'], batch_losses['G1_L1'], label='G1 L1', alpha=0.7)
+                plt.plot(batch_losses['batch_idx'], batch_losses['G1_Adv'], label='G1 Adv', alpha=0.7)
+                plt.plot(batch_losses['batch_idx'], batch_losses['G1_FM'], label='G1 FM', alpha=0.7)
+                plt.plot(batch_losses['batch_idx'], batch_losses['D1_Real'], label='D1 Real', linestyle='dashed', alpha=0.7)
+                plt.plot(batch_losses['batch_idx'], batch_losses['D1_Fake'], label='D1 Fake', linestyle='dashed', alpha=0.7)
         except (json.JSONDecodeError, KeyError):
-            print("Warning: Could not load batch history, using empty data.")
+            print("Warning: Could not load batch history.")
+    else:
+        plt.text(0.5, 0.5, "Batch loss history too large to display", 
+                 horizontalalignment='center', verticalalignment='center')
+            
+    plt.xlabel('Global Batch Number')
+    plt.ylabel('Loss Value')
+    plt.title('All Batch Losses (Complete History)')
+    plt.legend()
+    plt.grid(True)
+    
+    # Rest of the plotting code remains the same...
+
+    epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
     
     if os.path.exists(epoch_path):
         try:
@@ -358,20 +378,22 @@ if __name__ == '__main__':
             with torch.amp.autocast(config.DEVICE):  
                 pred_edge = g1(input_edges, mask)  
 
-                # **L1 Loss (Scaled from Config)**
+                # L1 Loss
                 g1_loss_l1 = l1_loss(pred_edge, gt_edges) * config.L1_LOSS_WEIGHT  
 
-                # **Adversarial Loss**
+                # Store these values for discriminator step
+                pred_edge_detached = pred_edge.detach()
+                
+                # Adversarial Loss
                 fake_pred = d1(input_edges, pred_edge)  
                 target_real = torch.ones_like(fake_pred, device=config.DEVICE) * 0.9  # Smoothed labels
                 g1_loss_adv = adversarial_loss(fake_pred, target_real)  
 
-                # **Feature Matching Loss**
+                # Feature Matching Loss
                 real_features = d1(input_edges, gt_edges).detach()  # Real edge features from D1
-                fake_features = d1(input_edges, pred_edge)  # Generated edge features
-                g1_loss_fm = feature_matching_loss(real_features, fake_features) * config.FM_LOSS_WEIGHT  
+                g1_loss_fm = feature_matching_loss(real_features, fake_pred) * config.FM_LOSS_WEIGHT  
 
-                # **Total Generator Loss**
+                # Total Generator Loss
                 loss_g = g1_loss_l1 + g1_loss_adv + g1_loss_fm
 
             scaler.scale(loss_g).backward()
@@ -383,7 +405,7 @@ if __name__ == '__main__':
 
             with torch.amp.autocast(config.DEVICE):  
                 real_pred = d1(input_edges, gt_edges)  
-                fake_pred_detached = d1(input_edges, pred_edge.detach())  
+                fake_pred_detached = d1(input_edges, pred_edge_detached)  # Use the detached tensor
 
                 target_fake = torch.zeros_like(fake_pred_detached, device=config.DEVICE) + 0.1
                 real_loss = adversarial_loss(real_pred, target_real)
