@@ -312,9 +312,10 @@ if __name__ == '__main__':
             epochs_no_improve = 0  # Reset early stopping counter
         else:
             epochs_no_improve += 1
+            print(f"🔻 No improvement in G1 loss for {epochs_no_improve} epochs.")
             
         # **Save Training Samples Every Epoch**
-        if (epoch + 1) % config.TRAINING_SAMPLE_EPOCHS == 0:
+        if (epoch) % config.TRAINING_SAMPLE_EPOCHS == 0:
             print(f"\n📸 Saving Training Samples for Epoch {epoch+1}...\n")
             save_generated_images(
                 epoch=epoch+1, 
@@ -326,7 +327,7 @@ if __name__ == '__main__':
             )
 
         ###### 🔹 Validation Phase ######
-        if (epoch + 1) % config.VALIDATION_SAMPLE_EPOCHS == 0:
+        if (epoch) % config.VALIDATION_SAMPLE_EPOCHS == 0:
             print(f"\n🔍 Running Validation for Epoch {epoch+1}...\n")
             g1.eval()
             with torch.no_grad():

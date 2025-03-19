@@ -9,7 +9,7 @@ class Config:
         base_drive_dir = "/content/drive/MyDrive/edgeconnect/"
 
         # Dataset paths in Drive
-        self.TRAIN_IMAGES_GT = "/content/CelebA/train_gt" 
+        self.TRAIN_IMAGES_GT = "/content/CelebA/train_gt"
         self.TRAIN_IMAGES_INPUT = "/content/CelebA/train_input"
 
         self.TEST_IMAGES_GT = os.path.join(base_drive_dir, "data_archive/CelebA/test_gt")
@@ -22,7 +22,7 @@ class Config:
         self.BATCH_SIZE = 64
         self.NUM_WORKERS = 8
         self.EPOCHS = 250
-        self.EARLY_STOP_PATIENCE = 3  # Updated for faster tracking
+        self.EARLY_STOP_PATIENCE = 5  # Updated for faster tracking
         self.IMAGE_SIZE = 256
 
         # Logging & Checkpoints
@@ -33,7 +33,7 @@ class Config:
         # System Settings
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         self.MODEL_CHECKPOINT_DIR = os.path.join(base_drive_dir, "models/checkpoints")
-        self.EPOCH_SAMPLES_DIR = os.path.join(base_drive_dir, "moedels/generated_samples/epochs")
+        self.EPOCH_SAMPLES_DIR = os.path.join(base_drive_dir, "models/generated_samples/epochs")
         self.BATCH_SAMPLES_DIR = os.path.join(base_drive_dir, "models/generated_samples/batch")
         self.LOSS_PLOT_DIR = os.path.join(base_drive_dir, "models/plots")
 
