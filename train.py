@@ -12,7 +12,164 @@ from config import config
 CHECKPOINT_DIR = config.MODEL_CHECKPOINT_DIR
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
-# Update the save_generated_images function to support different save directories
+# Function to save loss data to JSON files
+def save_losses_to_json(batch_losses, epoch_losses, save_dir):
+    """
+    Saves batch and epoch losses to JSON files for persistence.
+    """
+    os.makedirs(save_dir, exist_ok=True)
+    
+    # Save batch losses
+    batch_path = os.path.join(save_dir, 'batch_losses.json')
+    # Load existing data if available
+    if os.path.exists(batch_path):
+        with open(batch_path, 'r') as f:
+            try:
+                existing_batch_data = json.load(f)
+                # Update with new data - add a global batch index for continuity
+                if existing_batch_data['batch_idx']:
+                    # Calculate offset for new batch indices
+                    last_batch_idx = existing_batch_data['batch_idx'][-1]
+                    # Add the offset to new batch indices
+                    updated_batch_idx = [idx + last_batch_idx + 1 for idx in batch_losses['batch_idx']]
+                    batch_losses['batch_idx'] = existing_batch_data['batch_idx'] + updated_batch_idx
+                    # Append other metrics
+                    for key in ['G1_L1', 'G1_Adv', 'G1_FM', 'D1_Real', 'D1_Fake']:
+                        batch_losses[key] = existing_batch_data.get(key, []) + batch_losses[key]
+            except (json.JSONDecodeError, KeyError):
+                print("Warning: Could not load existing batch data, creating new file.")
+    
+    # Save updated batch data
+    with open(batch_path, 'w') as f:
+        json.dump(batch_losses, f)
+    
+    # Save epoch losses
+    epoch_path = os.path.join(save_dir, 'epoch_losses.json')
+    # Load existing data if available
+    if os.path.exists(epoch_path):
+        with open(epoch_path, 'r') as f:
+            try:
+                existing_epoch_data = json.load(f)
+                # Merge epoch data without duplicates
+                epoch_set = set(existing_epoch_data['epoch'])
+                
+                # Only add epochs that aren't already recorded
+                for i, epoch in enumerate(epoch_losses['epoch']):
+                    if epoch not in epoch_set:
+                        existing_epoch_data['epoch'].append(epoch)
+                        existing_epoch_data['G1_Loss'].append(epoch_losses['G1_Loss'][i])
+                        existing_epoch_data['D1_Loss'].append(epoch_losses['D1_Loss'][i])
+                
+                epoch_losses = existing_epoch_data
+            except (json.JSONDecodeError, KeyError):
+                print("Warning: Could not load existing epoch data, creating new file.")
+    
+    # Save updated epoch data
+    with open(epoch_path, 'w') as f:
+        json.dump(epoch_losses, f)
+
+# Enhanced plotting function to load historical data
+def plot_losses(current_batch_losses, current_epoch_losses, save_dir):
+    """
+    Plots and saves comprehensive loss graphs including historical data.
+    """
+    os.makedirs(save_dir, exist_ok=True)
+    
+    # Load complete history if available
+    batch_path = os.path.join(save_dir, 'batch_losses.json')
+    epoch_path = os.path.join(save_dir, 'epoch_losses.json')
+    
+    batch_losses = current_batch_losses.copy()
+    epoch_losses = current_epoch_losses.copy()
+    
+    if os.path.exists(batch_path):
+        try:
+            with open(batch_path, 'r') as f:
+                batch_losses = json.load(f)
+        except (json.JSONDecodeError, KeyError):
+            print("Warning: Could not load batch history, using current data only.")
+    
+    if os.path.exists(epoch_path):
+        try:
+            with open(epoch_path, 'r') as f:
+                epoch_losses = json.load(f)
+        except (json.JSONDecodeError, KeyError):
+            print("Warning: Could not load epoch history, using current data only.")
+    
+    # Create more comprehensive plots
+    plt.figure(figsize=(20, 12))
+    
+    # Plot 1: All batch losses (top left)
+    plt.subplot(2, 2, 1)
+    if batch_losses['batch_idx']:
+        plt.plot(batch_losses['batch_idx'], batch_losses['G1_L1'], label='G1 L1', alpha=0.7)
+        plt.plot(batch_losses['batch_idx'], batch_losses['G1_Adv'], label='G1 Adv', alpha=0.7)
+        plt.plot(batch_losses['batch_idx'], batch_losses['G1_FM'], label='G1 FM', alpha=0.7)
+        plt.xlabel('Global Batch Number')
+        plt.ylabel('Loss Value')
+        plt.title('All Batch Losses (Complete History)')
+        plt.legend()
+        plt.grid(True)
+    
+    # Plot 2: Recent batch losses - last 100 batches (top right)
+    plt.subplot(2, 2, 2)
+    if len(batch_losses['batch_idx']) > 0:
+        display_count = min(100, len(batch_losses['batch_idx']))
+        plt.plot(batch_losses['batch_idx'][-display_count:], batch_losses['G1_L1'][-display_count:], label='G1 L1')
+        plt.plot(batch_losses['batch_idx'][-display_count:], batch_losses['G1_Adv'][-display_count:], label='G1 Adv')
+        plt.plot(batch_losses['batch_idx'][-display_count:], batch_losses['G1_FM'][-display_count:], label='G1 FM')
+        plt.plot(batch_losses['batch_idx'][-display_count:], batch_losses['D1_Real'][-display_count:], label='D1 Real', linestyle='dashed')
+        plt.plot(batch_losses['batch_idx'][-display_count:], batch_losses['D1_Fake'][-display_count:], label='D1 Fake', linestyle='dashed')
+        plt.xlabel('Recent Batch Number')
+        plt.ylabel('Loss Value')
+        plt.title('Recent Batch Losses (Last 100)')
+        plt.legend()
+        plt.grid(True)
+    
+    # Plot 3: All epoch losses (bottom left)
+    plt.subplot(2, 2, 3)
+    if epoch_losses['epoch']:
+        plt.plot(epoch_losses['epoch'], epoch_losses['G1_Loss'], marker='o', label='G1 Loss', linewidth=2)
+        plt.plot(epoch_losses['epoch'], epoch_losses['D1_Loss'], marker='s', label='D1 Loss', linewidth=2)
+        plt.xlabel('Epoch')
+        plt.ylabel('Average Loss')
+        plt.title('Epoch Losses (Complete History)')
+        plt.legend()
+        plt.grid(True)
+    
+    # Plot 4: Custom insight - G1 components vs epochs (bottom right)
+    plt.subplot(2, 2, 4)
+    if current_epoch_losses['epoch']:
+        current_epoch = current_epoch_losses['epoch'][-1]
+        # Find all batches from the current epoch (assumption: batch indices are sequential per epoch)
+        if current_batch_losses['batch_idx']:
+            last_epoch_batches = []
+            last_epoch_g1l1 = []
+            last_epoch_g1adv = []
+            last_epoch_g1fm = []
+            
+            # Get average of each loss type for each epoch completed
+            for i, epoch in enumerate(epoch_losses['epoch']):
+                x_pos = float(epoch)
+                if i < len(epoch_losses['G1_Loss']):
+                    plt.bar(x_pos - 0.2, epoch_losses['G1_Loss'][i], width=0.2, color='blue', alpha=0.7, label='G1 Loss' if i == 0 else None)
+                if i < len(epoch_losses['D1_Loss']):
+                    plt.bar(x_pos + 0.0, epoch_losses['D1_Loss'][i], width=0.2, color='orange', alpha=0.7, label='D1 Loss' if i == 0 else None)
+            
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss Contribution')
+            plt.title('Loss Components by Epoch')
+            plt.legend()
+            plt.grid(True, axis='y')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, f'loss_trends_epoch_{current_epoch_losses["epoch"][-1] if current_epoch_losses["epoch"] else "0"}.png'))
+    plt.savefig(os.path.join(save_dir, 'loss_trends_latest.png')) # Always overwrite this one for the latest view
+    plt.close()
+    
+    # Also save current state to JSON
+    save_losses_to_json(current_batch_losses, current_epoch_losses, save_dir)
+
 def save_generated_images(epoch, input_edges, masks, gt_edges, pred_edges, save_dir=None, mode="train", batch_idx=None):
     """
     Saves generated images with an option for batch-specific directories.
@@ -81,42 +238,8 @@ def save_generated_images(epoch, input_edges, masks, gt_edges, pred_edges, save_
         plt.savefig(save_path)
         plt.close(fig)  # Close figure to free memory
 
-def plot_losses(batch_losses, epoch_losses, save_dir):
-    """Plots and saves loss graphs for batch-wise and epoch-wise losses."""
-    # Create directory if it doesn't exist
-    os.makedirs(save_dir, exist_ok=True)
-    
-    plt.figure(figsize=(12, 6))
-    
-    # Plot batch-wise losses
-    plt.subplot(1, 2, 1)
-    plt.plot(batch_losses['batch_idx'], batch_losses['G1_L1'], label='G1 L1 Loss')
-    plt.plot(batch_losses['batch_idx'], batch_losses['G1_Adv'], label='G1 Adv Loss')
-    plt.plot(batch_losses['batch_idx'], batch_losses['G1_FM'], label='G1 FM Loss')
-    plt.plot(batch_losses['batch_idx'], batch_losses['D1_Real'], label='D1 Real Loss', linestyle='dashed')
-    plt.plot(batch_losses['batch_idx'], batch_losses['D1_Fake'], label='D1 Fake Loss', linestyle='dashed')
-    plt.xlabel('Batch Number')
-    plt.ylabel('Loss')
-    plt.title('Batch-wise Loss Trends')
-    plt.legend()
-    plt.grid(True)
-    
-    # Plot epoch-wise losses
-    plt.subplot(1, 2, 2)
-    plt.plot(epoch_losses['epoch'], epoch_losses['G1_Loss'], label='G1 Loss', marker='o')
-    plt.plot(epoch_losses['epoch'], epoch_losses['D1_Loss'], label='D1 Loss', marker='o')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Epoch-wise Loss Trends')
-    plt.legend()
-    plt.grid(True)
-    
-    # Save plots
-    plt.savefig(os.path.join(save_dir, 'loss_trends.png'))
-    plt.close()
-
 # Function to save model and training history
-def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history):
+def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses):
     checkpoint = {
         "epoch": epoch,
         "g1_state_dict": g1.state_dict(),
@@ -125,6 +248,8 @@ def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history)
         "optimizer_d": optimizer_d.state_dict(),
         "best_loss": best_loss,
         "history": history,
+        "batch_losses": batch_losses,
+        "epoch_losses": epoch_losses
     }
 
     # Save the checkpoint file
@@ -135,7 +260,7 @@ def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history)
     # Save training history separately
     history_path = os.path.join(CHECKPOINT_DIR, "training_history.json")
     with open(history_path, "w") as f:
-        json.dump(history, f)
+        json.dump({"epochs": history, "batch_losses": batch_losses, "epoch_losses": epoch_losses}, f)
 
     # Keep only the last 3 best checkpoints
     manage_checkpoints()
@@ -147,9 +272,12 @@ def manage_checkpoints():
         os.remove(checkpoint_files[0])  # Remove the oldest checkpoint
         print(f"🗑️ Deleted old checkpoint: {checkpoint_files[0]}")
 
-# Function to load checkpoint if available
+# Load checkpoint with enhanced data recovery
 def load_checkpoint(g1, d1, optimizer_g, optimizer_d):
     checkpoint_files = sorted(glob.glob(os.path.join(CHECKPOINT_DIR, "checkpoint_epoch_*.pth")), key=os.path.getmtime)
+    batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
+    epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
+    
     if checkpoint_files:
         latest_checkpoint = checkpoint_files[-1]  # Load most recent checkpoint
         checkpoint = torch.load(latest_checkpoint, map_location=config.DEVICE, weights_only=False)
@@ -159,10 +287,33 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d):
         optimizer_d.load_state_dict(checkpoint["optimizer_d"])
         best_loss = checkpoint["best_loss"]
         history = checkpoint["history"]
+        
+        # Restore loss tracking if available
+        if "batch_losses" in checkpoint:
+            batch_losses = checkpoint["batch_losses"]
+        if "epoch_losses" in checkpoint:
+            epoch_losses = checkpoint["epoch_losses"]
+            
         start_epoch = checkpoint["epoch"] + 1
         print(f"🔄 Resuming training from epoch {start_epoch}, Best G1 Loss: {best_loss:.4f}")
-        return start_epoch, best_loss, history
-    return 1, float("inf"), {"g1_loss": [], "d1_loss": []}
+        return start_epoch, best_loss, history, batch_losses, epoch_losses
+    
+    # Load from JSON if checkpoint isn't available but JSON history is
+    json_path = os.path.join(CHECKPOINT_DIR, "training_history.json")
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, 'r') as f:
+                json_data = json.load(f)
+                history = json_data.get("epochs", {"g1_loss": [], "d1_loss": []})
+                if "batch_losses" in json_data:
+                    batch_losses = json_data["batch_losses"]
+                if "epoch_losses" in json_data:
+                    epoch_losses = json_data["epoch_losses"]
+                print("🔄 Loaded loss history from JSON file.")
+        except (json.JSONDecodeError, KeyError):
+            print("Warning: Could not load history from JSON.")
+    
+    return 1, float("inf"), {"g1_loss": [], "d1_loss": []}, batch_losses, epoch_losses
 
 if __name__ == '__main__':
     print("\n🔹 Initializing Model & Training Setup...\n")
@@ -199,16 +350,13 @@ if __name__ == '__main__':
     print(f"🔹 Training for a max of {num_epochs} Epochs on {config.DEVICE} with early stopping patience of {config.EARLY_STOP_PATIENCE} ...\n")
 
     # Load checkpoint if available
-    start_epoch, best_g1_loss, history = load_checkpoint(g1, d1, optimizer_g, optimizer_d)
+    start_epoch, best_g1_loss, history, batch_losses, epoch_losses = load_checkpoint(g1, d1, optimizer_g, optimizer_d)
 
     # Early Stopping Parameters
     patience = config.EARLY_STOP_PATIENCE
     epochs_no_improve = 0
 
     start_time = time.time()
-
-    batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
-    epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
 
     for epoch in range(start_epoch, num_epochs + 1):
         epoch_start_time = time.time()
@@ -303,7 +451,7 @@ if __name__ == '__main__':
         # Save best model checkpoint if G1 loss improves
         if avg_g1_loss < best_g1_loss:
             best_g1_loss = avg_g1_loss
-            save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_g1_loss, history)
+            save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_g1_loss, history, batch_losses, epoch_losses)
             epochs_no_improve = 0  # Reset early stopping counter
         else:
             epochs_no_improve += 1
