@@ -148,7 +148,7 @@ def get_dataloader_g1(split="train", use_mask=False):
     
     input_path, gt_path = dataset_paths[split]
     dataset = EdgeConnectDataset_G1(input_path, gt_path, config.IMAGE_SIZE, use_mask)
-    return DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS, pin_memory=True, prefetch_factor=2)
+    return DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS, pin_memory=config.PIN_MEMORY, prefetch_factor=2)
 
 # if __name__ == "__main__":
 #     # Test DataLoader
