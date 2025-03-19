@@ -29,7 +29,7 @@ class Config:
         # Logging & Checkpoints
         self.VALIDATION_SAMPLE_EPOCHS = 5  # Updated for faster tracking
         self.TRAINING_SAMPLE_EPOCHS = 1  # Updated for faster tracking
-        self.BATCH_SAMPLING_SIZE = 100  # Updated for faster/slower tracking
+        self.BATCH_SAMPLING_SIZE = 169  # Updated for faster/slower tracking
 
         # System Settings
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
