@@ -15,35 +15,54 @@ os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 # Function to save loss data to JSON files
 def save_losses_to_json(batch_losses, epoch_losses, save_dir):
     """
-    Saves batch and epoch losses to JSON files for persistence.
+    Saves batch and epoch losses with downsampling for large batch histories
     """
     os.makedirs(save_dir, exist_ok=True)
     
-    # Save batch losses
+    # Save batch losses with potential downsampling
     batch_path = os.path.join(save_dir, 'batch_losses.json')
+    
     # Load existing data if available
     if os.path.exists(batch_path):
-        with open(batch_path, 'r') as f:
-            try:
+        try:
+            with open(batch_path, 'r') as f:
                 existing_batch_data = json.load(f)
-                # Update with new data - add a global batch index for continuity
+                
+                # Check if we need to downsample (if getting too large)
+                total_points = len(existing_batch_data['batch_idx']) + len(batch_losses['batch_idx'])
+                max_points = 300  # Maximum points to store
+                
+                if total_points > max_points:
+                    # Downsample the existing data to half
+                    downsample_factor = 2
+                    for key in existing_batch_data:
+                        existing_batch_data[key] = existing_batch_data[key][::downsample_factor]
+                    print(f"Downsampled batch history from {len(existing_batch_data['batch_idx'])*2} to {len(existing_batch_data['batch_idx'])} points")
+                
+                # Update with new data
                 if existing_batch_data['batch_idx']:
                     # Calculate offset for new batch indices
                     last_batch_idx = existing_batch_data['batch_idx'][-1]
-                    # Add the offset to new batch indices
-                    updated_batch_idx = [idx + last_batch_idx + 1 for idx in batch_losses['batch_idx']]
-                    batch_losses['batch_idx'] = existing_batch_data['batch_idx'] + updated_batch_idx
-                    # Append other metrics
-                    for key in ['G1_L1', 'G1_Adv', 'G1_FM', 'D1_Real', 'D1_Fake']:
-                        batch_losses[key] = existing_batch_data.get(key, []) + batch_losses[key]
-            except (json.JSONDecodeError, KeyError):
-                print("Warning: Could not load existing batch data, creating new file.")
+                    # Add offset to batch_idx
+                    if batch_losses['batch_idx']:  # Check if not empty
+                        next_idx = last_batch_idx + 1
+                        updated_batch_idx = [next_idx + i for i, _ in enumerate(batch_losses['batch_idx'])]
+                        batch_losses['batch_idx'] = updated_batch_idx
+                
+                # Append data
+                for key in existing_batch_data:
+                    if key in batch_losses and batch_losses[key]:  # Add only if not empty
+                        existing_batch_data[key].extend(batch_losses[key])
+                
+                batch_losses = existing_batch_data
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"Warning: Could not load existing batch data: {e}")
     
     # Save updated batch data
     with open(batch_path, 'w') as f:
         json.dump(batch_losses, f)
     
-    # Save epoch losses
+    # Save epoch losses (leave as is)
     epoch_path = os.path.join(save_dir, 'epoch_losses.json')
     # Load existing data if available
     if os.path.exists(epoch_path):
@@ -72,6 +91,9 @@ def save_losses_to_json(batch_losses, epoch_losses, save_dir):
 def plot_losses(save_dir):
     """
     Plots loss graphs from JSON files with caching
+    Layout: 2 plots
+    - Top row: All batch losses (spanning full width)
+    - Bottom row: All epoch losses (spanning full width)
     """
     os.makedirs(save_dir, exist_ok=True)
     
@@ -79,39 +101,15 @@ def plot_losses(save_dir):
     batch_path = os.path.join(save_dir, 'batch_losses.json')
     epoch_path = os.path.join(save_dir, 'epoch_losses.json')
     
-    # Create plots
-    plt.figure(figsize=(20, 12))
+    batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
+    epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
     
-    # Plot 1: All batch losses (full top row spanning columns 1-2)
-    plt.subplot2grid((2, 2), (0, 0), colspan=2)
-    
-    # Only plot batch losses if the file isn't too large (for performance)
-    if os.path.exists(batch_path) and os.path.getsize(batch_path) < 10_000_000:  # ~10MB limit
+    if os.path.exists(batch_path):
         try:
             with open(batch_path, 'r') as f:
                 batch_losses = json.load(f)
-                
-            if batch_losses['batch_idx']:
-                plt.plot(batch_losses['batch_idx'], batch_losses['G1_L1'], label='G1 L1', alpha=0.7)
-                plt.plot(batch_losses['batch_idx'], batch_losses['G1_Adv'], label='G1 Adv', alpha=0.7)
-                plt.plot(batch_losses['batch_idx'], batch_losses['G1_FM'], label='G1 FM', alpha=0.7)
-                plt.plot(batch_losses['batch_idx'], batch_losses['D1_Real'], label='D1 Real', linestyle='dashed', alpha=0.7)
-                plt.plot(batch_losses['batch_idx'], batch_losses['D1_Fake'], label='D1 Fake', linestyle='dashed', alpha=0.7)
         except (json.JSONDecodeError, KeyError):
             print("Warning: Could not load batch history.")
-    else:
-        plt.text(0.5, 0.5, "Batch loss history too large to display", 
-                 horizontalalignment='center', verticalalignment='center')
-            
-    plt.xlabel('Global Batch Number')
-    plt.ylabel('Loss Value')
-    plt.title('All Batch Losses (Complete History)')
-    plt.legend()
-    plt.grid(True)
-    
-    # Rest of the plotting code remains the same...
-
-    epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
     
     if os.path.exists(epoch_path):
         try:
@@ -123,22 +121,32 @@ def plot_losses(save_dir):
     # Create plots
     plt.figure(figsize=(20, 12))
     
-    # Plot 1: All batch losses (full top row spanning columns 1-2)
-    plt.subplot2grid((2, 2), (0, 0), colspan=2)
-    if batch_losses['batch_idx']:
-        plt.plot(batch_losses['batch_idx'], batch_losses['G1_L1'], label='G1 L1', alpha=0.7)
-        plt.plot(batch_losses['batch_idx'], batch_losses['G1_Adv'], label='G1 Adv', alpha=0.7)
-        plt.plot(batch_losses['batch_idx'], batch_losses['G1_FM'], label='G1 FM', alpha=0.7)
-        plt.plot(batch_losses['batch_idx'], batch_losses['D1_Real'], label='D1 Real', linestyle='dashed', alpha=0.7)
-        plt.plot(batch_losses['batch_idx'], batch_losses['D1_Fake'], label='D1 Fake', linestyle='dashed', alpha=0.7)
-        plt.xlabel('Global Batch Number')
-        plt.ylabel('Loss Value')
-        plt.title('All Batch Losses (Complete History)')
-        plt.legend()
-        plt.grid(True)
+    # Plot 1: All batch losses (full top row)
+    plt.subplot2grid((2, 1), (0, 0))
     
-    # Plot 2: All epoch losses (bottom left)
-    plt.subplot(2, 2, 3)
+    # Only plot batch losses if the file isn't too large (for performance)
+    if os.path.exists(batch_path) and os.path.getsize(batch_path) < 10_000_000:  # ~10MB limit
+        try:
+            if batch_losses['batch_idx']:
+                plt.plot(batch_losses['batch_idx'], batch_losses['G1_L1'], label='G1 L1', alpha=0.7)
+                plt.plot(batch_losses['batch_idx'], batch_losses['G1_Adv'], label='G1 Adv', alpha=0.7)
+                plt.plot(batch_losses['batch_idx'], batch_losses['G1_FM'], label='G1 FM', alpha=0.7)
+                plt.plot(batch_losses['batch_idx'], batch_losses['D1_Real'], label='D1 Real', linestyle='dashed', alpha=0.7)
+                plt.plot(batch_losses['batch_idx'], batch_losses['D1_Fake'], label='D1 Fake', linestyle='dashed', alpha=0.7)
+        except (json.JSONDecodeError, KeyError):
+            print("Warning: Could not load batch history.")
+    else:
+        plt.text(0.5, 0.5, "Batch loss history too large to display", 
+                horizontalalignment='center', verticalalignment='center')
+            
+    plt.xlabel('Global Batch Number')
+    plt.ylabel('Loss Value')
+    plt.title('All Batch Losses (Complete History)')
+    plt.legend()
+    plt.grid(True)
+    
+    # Plot 2: All epoch losses (full bottom row)
+    plt.subplot2grid((2, 1), (1, 0))
     if epoch_losses['epoch']:
         plt.plot(epoch_losses['epoch'], epoch_losses['G1_Loss'], marker='o', label='G1 Loss', linewidth=2)
         plt.plot(epoch_losses['epoch'], epoch_losses['D1_Loss'], marker='s', label='D1 Loss', linewidth=2)
@@ -148,27 +156,10 @@ def plot_losses(save_dir):
         plt.legend()
         plt.grid(True)
     
-    # Plot 3: Custom insight - G1 components vs epochs (bottom right)
-    plt.subplot(2, 2, 4)
-    if epoch_losses['epoch']:
-        # Get average of each loss type for each epoch completed
-        for i, epoch in enumerate(epoch_losses['epoch']):
-            x_pos = float(epoch)
-            if i < len(epoch_losses['G1_Loss']):
-                plt.bar(x_pos - 0.2, epoch_losses['G1_Loss'][i], width=0.2, color='blue', alpha=0.7, label='G1 Loss' if i == 0 else None)
-            if i < len(epoch_losses['D1_Loss']):
-                plt.bar(x_pos + 0.0, epoch_losses['D1_Loss'][i], width=0.2, color='orange', alpha=0.7, label='D1 Loss' if i == 0 else None)
-        
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss Contribution')
-        plt.title('Loss Components by Epoch')
-        plt.legend()
-        plt.grid(True, axis='y')
-    
     plt.tight_layout()
     latest_epoch = epoch_losses["epoch"][-1] if epoch_losses["epoch"] else "0"
     plt.savefig(os.path.join(save_dir, f'loss_trends_epoch_{latest_epoch}.png'))
-    plt.savefig(os.path.join(save_dir, 'loss_trends_latest.png')) # Always overwrite this one for the latest view
+    # plt.savefig(os.path.join(save_dir, 'loss_trends_latest.png')) # Always overwrite this one for the latest view
     plt.close()
 
 def save_generated_images(epoch, input_edges, masks, gt_edges, pred_edges, save_dir=None, mode="train", batch_idx=None):
