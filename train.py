@@ -72,6 +72,10 @@ def save_losses_to_json(batch_losses, epoch_losses, save_dir):
 def plot_losses(current_batch_losses, current_epoch_losses, save_dir):
     """
     Plots and saves comprehensive loss graphs including historical data.
+    Uses a 2x2 grid with:
+    - Top row (positions 1-2): Single large plot of all batch losses
+    - Bottom left (position 3): Epoch losses
+    - Bottom right (position 4): G1 and D1 loss components by epoch
     """
     os.makedirs(save_dir, exist_ok=True)
     
@@ -99,34 +103,21 @@ def plot_losses(current_batch_losses, current_epoch_losses, save_dir):
     # Create more comprehensive plots
     plt.figure(figsize=(20, 12))
     
-    # Plot 1: All batch losses (top left)
-    plt.subplot(2, 2, 1)
+    # Plot 1: All batch losses (full top row spanning columns 1-2)
+    plt.subplot2grid((2, 2), (0, 0), colspan=2)
     if batch_losses['batch_idx']:
         plt.plot(batch_losses['batch_idx'], batch_losses['G1_L1'], label='G1 L1', alpha=0.7)
         plt.plot(batch_losses['batch_idx'], batch_losses['G1_Adv'], label='G1 Adv', alpha=0.7)
         plt.plot(batch_losses['batch_idx'], batch_losses['G1_FM'], label='G1 FM', alpha=0.7)
+        plt.plot(batch_losses['batch_idx'], batch_losses['D1_Real'], label='D1 Real', linestyle='dashed', alpha=0.7)
+        plt.plot(batch_losses['batch_idx'], batch_losses['D1_Fake'], label='D1 Fake', linestyle='dashed', alpha=0.7)
         plt.xlabel('Global Batch Number')
         plt.ylabel('Loss Value')
         plt.title('All Batch Losses (Complete History)')
         plt.legend()
         plt.grid(True)
     
-    # Plot 2: Recent batch losses - last 100 batches (top right)
-    plt.subplot(2, 2, 2)
-    if len(batch_losses['batch_idx']) > 0:
-        display_count = min(100, len(batch_losses['batch_idx']))
-        plt.plot(batch_losses['batch_idx'][-display_count:], batch_losses['G1_L1'][-display_count:], label='G1 L1')
-        plt.plot(batch_losses['batch_idx'][-display_count:], batch_losses['G1_Adv'][-display_count:], label='G1 Adv')
-        plt.plot(batch_losses['batch_idx'][-display_count:], batch_losses['G1_FM'][-display_count:], label='G1 FM')
-        plt.plot(batch_losses['batch_idx'][-display_count:], batch_losses['D1_Real'][-display_count:], label='D1 Real', linestyle='dashed')
-        plt.plot(batch_losses['batch_idx'][-display_count:], batch_losses['D1_Fake'][-display_count:], label='D1 Fake', linestyle='dashed')
-        plt.xlabel('Recent Batch Number')
-        plt.ylabel('Loss Value')
-        plt.title('Recent Batch Losses (Last 100)')
-        plt.legend()
-        plt.grid(True)
-    
-    # Plot 3: All epoch losses (bottom left)
+    # Plot 2: All epoch losses (bottom left)
     plt.subplot(2, 2, 3)
     if epoch_losses['epoch']:
         plt.plot(epoch_losses['epoch'], epoch_losses['G1_Loss'], marker='o', label='G1 Loss', linewidth=2)
@@ -137,30 +128,22 @@ def plot_losses(current_batch_losses, current_epoch_losses, save_dir):
         plt.legend()
         plt.grid(True)
     
-    # Plot 4: Custom insight - G1 components vs epochs (bottom right)
+    # Plot 3: Custom insight - G1 components vs epochs (bottom right)
     plt.subplot(2, 2, 4)
-    if current_epoch_losses['epoch']:
-        current_epoch = current_epoch_losses['epoch'][-1]
-        # Find all batches from the current epoch (assumption: batch indices are sequential per epoch)
-        if current_batch_losses['batch_idx']:
-            last_epoch_batches = []
-            last_epoch_g1l1 = []
-            last_epoch_g1adv = []
-            last_epoch_g1fm = []
-            
-            # Get average of each loss type for each epoch completed
-            for i, epoch in enumerate(epoch_losses['epoch']):
-                x_pos = float(epoch)
-                if i < len(epoch_losses['G1_Loss']):
-                    plt.bar(x_pos - 0.2, epoch_losses['G1_Loss'][i], width=0.2, color='blue', alpha=0.7, label='G1 Loss' if i == 0 else None)
-                if i < len(epoch_losses['D1_Loss']):
-                    plt.bar(x_pos + 0.0, epoch_losses['D1_Loss'][i], width=0.2, color='orange', alpha=0.7, label='D1 Loss' if i == 0 else None)
-            
-            plt.xlabel('Epoch')
-            plt.ylabel('Loss Contribution')
-            plt.title('Loss Components by Epoch')
-            plt.legend()
-            plt.grid(True, axis='y')
+    if epoch_losses['epoch']:
+        # Get average of each loss type for each epoch completed
+        for i, epoch in enumerate(epoch_losses['epoch']):
+            x_pos = float(epoch)
+            if i < len(epoch_losses['G1_Loss']):
+                plt.bar(x_pos - 0.2, epoch_losses['G1_Loss'][i], width=0.2, color='blue', alpha=0.7, label='G1 Loss' if i == 0 else None)
+            if i < len(epoch_losses['D1_Loss']):
+                plt.bar(x_pos + 0.0, epoch_losses['D1_Loss'][i], width=0.2, color='orange', alpha=0.7, label='D1 Loss' if i == 0 else None)
+        
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss Contribution')
+        plt.title('Loss Components by Epoch')
+        plt.legend()
+        plt.grid(True, axis='y')
     
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, f'loss_trends_epoch_{current_epoch_losses["epoch"][-1] if current_epoch_losses["epoch"] else "0"}.png'))
@@ -278,7 +261,7 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d):
     batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
     epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
     
-    if checkpoint_files:
+    if (checkpoint_files):
         latest_checkpoint = checkpoint_files[-1]  # Load most recent checkpoint
         checkpoint = torch.load(latest_checkpoint, map_location=config.DEVICE, weights_only=False)
         g1.load_state_dict(checkpoint["g1_state_dict"])
@@ -428,10 +411,7 @@ if __name__ == '__main__':
             if (batch_idx + 1) % config.BATCH_SAMPLING_SIZE == 0:
                 print(f"  🔹 Batch [{batch_idx+1}/{len(train_dataloader)}] - G1 Loss: {loss_g.item():.4f}, D1 Loss: {loss_d.item():.4f}")
 
-                # Plot and save loss graphs
-                plot_losses(batch_losses, epoch_losses, config.LOSS_PLOT_DIR)
-
-                print(f"\n📸 Saving Training Samples for this batch...\n")
+                print(f"\n📸 Saving Training Samples for batch {batch_idx+1}...\n")
                 save_generated_images(epoch, input_edges, mask, gt_edges, pred_edge, mode="train", batch_idx=batch_idx)
 
         # Compute average loss for the epoch
@@ -458,7 +438,7 @@ if __name__ == '__main__':
             
         # **Save Training Samples Every Epoch**
         if (epoch) % config.TRAINING_SAMPLE_EPOCHS == 0:
-            print(f"\n📸 Saving Training Samples for Epoch {epoch+1}...\n")
+            print(f"\n📸 Saving Training Samples for Epoch {epoch}...\n")
             save_generated_images(
                 epoch=epoch+1, 
                 input_edges=input_edges, 
@@ -470,7 +450,7 @@ if __name__ == '__main__':
 
         ###### 🔹 Validation Phase ######
         if (epoch) % config.VALIDATION_SAMPLE_EPOCHS == 0:
-            print(f"\n🔍 Running Validation for Epoch {epoch+1}...\n")
+            print(f"\n🔍 Running Validation for Epoch {epoch}...\n")
             g1.eval()
             with torch.no_grad():
                 for val_batch in val_dataloader:
