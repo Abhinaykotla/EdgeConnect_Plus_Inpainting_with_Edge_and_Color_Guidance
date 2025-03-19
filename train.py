@@ -68,39 +68,39 @@ def save_losses_to_json(batch_losses, epoch_losses, save_dir):
     with open(epoch_path, 'w') as f:
         json.dump(epoch_losses, f)
 
-# Enhanced plotting function to load historical data
-def plot_losses(current_batch_losses, current_epoch_losses, save_dir):
+# Modify the plot_losses function to only read from files and not save
+def plot_losses(save_dir):
     """
-    Plots and saves comprehensive loss graphs including historical data.
+    Plots and saves comprehensive loss graphs from JSON files.
     Uses a 2x2 grid with:
     - Top row (positions 1-2): Single large plot of all batch losses
-    - Bottom left (position 3): Epoch losses
+    - Bottom left (position 3): Epoch losses 
     - Bottom right (position 4): G1 and D1 loss components by epoch
     """
     os.makedirs(save_dir, exist_ok=True)
     
-    # Load complete history if available
+    # Load complete history from saved files for visualization
     batch_path = os.path.join(save_dir, 'batch_losses.json')
     epoch_path = os.path.join(save_dir, 'epoch_losses.json')
     
-    batch_losses = current_batch_losses.copy()
-    epoch_losses = current_epoch_losses.copy()
+    batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
+    epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
     
     if os.path.exists(batch_path):
         try:
             with open(batch_path, 'r') as f:
                 batch_losses = json.load(f)
         except (json.JSONDecodeError, KeyError):
-            print("Warning: Could not load batch history, using current data only.")
+            print("Warning: Could not load batch history, using empty data.")
     
     if os.path.exists(epoch_path):
         try:
             with open(epoch_path, 'r') as f:
                 epoch_losses = json.load(f)
         except (json.JSONDecodeError, KeyError):
-            print("Warning: Could not load epoch history, using current data only.")
+            print("Warning: Could not load epoch history, using empty data.")
     
-    # Create more comprehensive plots
+    # Create plots
     plt.figure(figsize=(20, 12))
     
     # Plot 1: All batch losses (full top row spanning columns 1-2)
@@ -146,12 +146,10 @@ def plot_losses(current_batch_losses, current_epoch_losses, save_dir):
         plt.grid(True, axis='y')
     
     plt.tight_layout()
-    plt.savefig(os.path.join(save_dir, f'loss_trends_epoch_{current_epoch_losses["epoch"][-1] if current_epoch_losses["epoch"] else "0"}.png'))
+    latest_epoch = epoch_losses["epoch"][-1] if epoch_losses["epoch"] else "0"
+    plt.savefig(os.path.join(save_dir, f'loss_trends_epoch_{latest_epoch}.png'))
     plt.savefig(os.path.join(save_dir, 'loss_trends_latest.png')) # Always overwrite this one for the latest view
     plt.close()
-    
-    # Also save current state to JSON
-    save_losses_to_json(current_batch_losses, current_epoch_losses, save_dir)
 
 def save_generated_images(epoch, input_edges, masks, gt_edges, pred_edges, save_dir=None, mode="train", batch_idx=None):
     """
@@ -425,8 +423,14 @@ if __name__ == '__main__':
         history["g1_loss"].append(avg_g1_loss)
         history["d1_loss"].append(avg_d1_loss)
 
-        # Plot and save loss graphs
-        plot_losses(batch_losses, epoch_losses, config.LOSS_PLOT_DIR)
+        # First save the current losses to JSON files
+        save_losses_to_json(batch_losses, epoch_losses, config.LOSS_PLOT_DIR)
+        
+        # Reset batch losses for the next epoch to avoid duplication
+        batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
+
+        # Then plot using the saved JSON files
+        plot_losses(config.LOSS_PLOT_DIR)
 
         # Save best model checkpoint if G1 loss improves
         if avg_g1_loss < best_g1_loss:
