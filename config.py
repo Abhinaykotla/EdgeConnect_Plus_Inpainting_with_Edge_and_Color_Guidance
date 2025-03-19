@@ -19,6 +19,7 @@ class Config:
         # Training Hyperparameters
         self.BATCH_SIZE = 12 
         self.NUM_WORKERS = 6 
+        self.PIN_MEMORY = True
         self.EPOCHS = 100  
         self.EARLY_STOP_PATIENCE = 5  # Updated for faster tracking
         self.IMAGE_SIZE = 256  

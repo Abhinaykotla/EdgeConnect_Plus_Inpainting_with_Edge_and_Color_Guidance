@@ -19,8 +19,9 @@ class Config:
         self.VAL_IMAGES_INPUT = os.path.join(base_drive_dir, "data_archive/CelebA/val_input")
 
         # Training Hyperparameters
-        self.BATCH_SIZE = 64
-        self.NUM_WORKERS = 8
+        self.BATCH_SIZE = 192
+        self.NUM_WORKERS =12
+        self.PIN_MEMORY = True
         self.EPOCHS = 250
         self.EARLY_STOP_PATIENCE = 5  # Updated for faster tracking
         self.IMAGE_SIZE = 256
@@ -28,7 +29,7 @@ class Config:
         # Logging & Checkpoints
         self.VALIDATION_SAMPLE_EPOCHS = 5  # Updated for faster tracking
         self.TRAINING_SAMPLE_EPOCHS = 1  # Updated for faster tracking
-        self.BATCH_SAMPLING_SIZE = 1000  # Updated for faster/slower tracking
+        self.BATCH_SAMPLING_SIZE = 100  # Updated for faster/slower tracking
 
         # System Settings
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
