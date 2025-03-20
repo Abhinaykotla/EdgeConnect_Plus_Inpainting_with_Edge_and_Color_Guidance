@@ -1,10 +1,12 @@
+# dataloader.py: DataLoader for EdgeConnect+ G1 (Edge Generator) using Canny edge detection.
+
 import os
 import cv2
 import torch
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
-from config import config
+from config import config_g1
 
 def apply_canny(image):
     """
@@ -22,7 +24,7 @@ def apply_canny(image):
             image = image.astype(np.uint8)
             
     # Apply Canny edge detection
-    edges = cv2.Canny(image, config.CANNY_THRESHOLD_LOW, config.CANNY_THRESHOLD_HIGH) # Shape: (H, W)
+    edges = cv2.Canny(image, config_g1.CANNY_THRESHOLD_LOW_G1, config_g1.CANNY_THRESHOLD_HIGH_G1) # Shape: (H, W)
     
     # Invert and normalize to [0, 1] for the edge map
     edges = (255 - edges).astype(np.float32) / 255.0
@@ -143,20 +145,20 @@ class EdgeConnectDataset_G1(Dataset):
 # Initialize DataLoader for G1 with optional mask input
 def get_dataloader_g1(split="train", use_mask=False):
     dataset_paths = {
-        "train": (config.TRAIN_IMAGES_INPUT, config.TRAIN_IMAGES_GT),
-        "test": (config.TEST_IMAGES_INPUT, config.TEST_IMAGES_GT),
-        "val": (config.VAL_IMAGES_INPUT, config.VAL_IMAGES_GT)
+        "train": (config_g1.TRAIN_IMAGES_INPUT_G1, config_g1.TRAIN_IMAGES_GT_G1),
+        "test": (config_g1.TEST_IMAGES_INPUT_G1, config_g1.TEST_IMAGES_GT_G1),
+        "val": (config_g1.VAL_IMAGES_INPUT_G1, config_g1.VAL_IMAGES_GT_G1)
     }
     if split not in dataset_paths:
         raise ValueError("Invalid dataset split. Choose from 'train', 'test', or 'val'.")
     
     input_path, gt_path = dataset_paths[split]
-    dataset = EdgeConnectDataset_G1(input_path, gt_path, config.IMAGE_SIZE, use_mask)
-    return DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS, pin_memory=config.PIN_MEMORY, prefetch_factor=2)
+    dataset = EdgeConnectDataset_G1(input_path, gt_path, config_g1.IMAGE_SIZE_G1, use_mask)
+    return DataLoader(dataset, batch_size=config_g1.BATCH_SIZE_G1, shuffle=True, num_workers=config_g1.NUM_WORKERS_G1, pin_memory=config_g1.PIN_MEMORY_G1, prefetch_factor=2)
 
-if __name__ == "__main__":
-    # Test DataLoader
-    dataloader = get_dataloader_g1(split="val", use_mask=True)
-    for batch in dataloader:
-        print(batch["input_edge"].shape, batch["gt_edge"].shape, batch["mask"].shape)
-        break
+# if __name__ == "__main__":
+#     # Test DataLoader
+#     dataloader = get_dataloader_g1(split="val", use_mask=True)
+#     for batch in dataloader:
+#         print(batch["input_edge"].shape, batch["gt_edge"].shape, batch["mask"].shape)
+#         break
