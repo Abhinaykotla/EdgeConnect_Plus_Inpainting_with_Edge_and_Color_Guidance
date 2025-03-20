@@ -60,7 +60,7 @@ class Config:
         # Loss Weights (Controls the balance between different loss components)
         self.L1_LOSS_WEIGHT = 1            # Pixel-wise reconstruction loss weight
         self.ADV_LOSS_WEIGHT = 0.5         # Adversarial loss weight for generators
-        self.FM_LOSS_WEIGHT = 3            # Feature matching loss weight
+        self.FM_LOSS_WEIGHT = 1.5            # Feature matching loss weight
         self.STYLE_LOSS_WEIGHT = 250       # Style transfer loss weight
         self.CONTENT_LOSS_WEIGHT = 1.0     # Content preservation loss weight
 
