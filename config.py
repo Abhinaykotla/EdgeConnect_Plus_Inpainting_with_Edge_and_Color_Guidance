@@ -50,18 +50,18 @@ class Config:
         self.LOSS_PLOT_DIR = os.path.abspath(os.path.join(base_dir, "models/plots"))  # Loss visualization charts
 
         # Optimizer Parameters
-        self.LEARNING_RATE = 0.0001        # Base learning rate for Adam optimizer
-        self.D2G_LR_RATIO = 0.02           # Discriminator learning rate ratio (relative to generator)
+        self.LEARNING_RATE = 0.00005       # Base learning rate for Adam optimizer
+        self.D2G_LR_RATIO = 0.005          # Ratio between discriminator and generator learning rates
         self.BETA1 = 0.5                   # Adam optimizer beta1 parameter (momentum)
         self.BETA2 = 0.999                 # Adam optimizer beta2 parameter (RMSprop)
-        self.WEIGHT_DECAY = 0.00005        # L2 regularization strength in Adam optimizer
+        self.WEIGHT_DECAY = 0.00005        # L2 regularization strength in Adam
 
         # Loss Weights (Controls the balance between different loss components)
         self.L1_LOSS_WEIGHT = 1            # Pixel-wise reconstruction loss weight
-        self.ADV_LOSS_WEIGHT = 1           # Adversarial loss weight for generators
-        self.FM_LOSS_WEIGHT = 5            # Feature matching loss weight (for better feature preservation)
-        self.STYLE_LOSS_WEIGHT = 250       # Style transfer loss weight (for texture consistency)
-        self.CONTENT_LOSS_WEIGHT = 1.0     # Content preservation loss weight (for semantic consistency)
+        self.ADV_LOSS_WEIGHT = 0.5         # Adversarial loss weight for generators
+        self.FM_LOSS_WEIGHT = 3            # Feature matching loss weight
+        self.STYLE_LOSS_WEIGHT = 250       # Style transfer loss weight
+        self.CONTENT_LOSS_WEIGHT = 1.0     # Content preservation loss weight
 
         # Canny Edge Detection Parameters (For pre-processing input images)
         self.CANNY_THRESHOLD_LOW = 45      # Lower threshold for Canny edge detection sensitivity
