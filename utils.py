@@ -29,7 +29,7 @@ def save_losses_to_json(batch_losses, epoch_losses, save_dir):
                 
                 # Check if we need to downsample (if getting too large)
                 total_points = len(existing_batch_data['batch_idx']) + len(batch_losses['batch_idx'])
-                max_points = 300  # Maximum points to store
+                max_points = config.MAX_BATCH_POINTS  # Maximum points to store
                 
                 if total_points > max_points:
                     # Downsample the existing data to half
