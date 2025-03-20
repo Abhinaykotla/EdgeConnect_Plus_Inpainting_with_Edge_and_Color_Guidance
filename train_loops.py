@@ -203,7 +203,7 @@ def train_g1_and_d1():
                 with torch.no_grad():  # Add torch.no_grad() here for consistency
                     pred_edge_ema = g1(input_edges, mask)
                 # Use epoch, not epoch+1 for consistent numbering
-                save_generated_images(epoch, input_edges, gt_edges, pred_edge_ema, mask, mode="train", batch_idx=batch_idx+1)
+                save_generated_images(epoch, input_edges, mask, gt_edges, pred_edge_ema, mode="train", batch_idx=batch_idx+1)
                 g1_ema.restore()
 
         # Compute average loss for the epoch
