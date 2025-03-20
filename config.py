@@ -31,6 +31,7 @@ class Config:
         # Logging & Checkpoints
         self.VALIDATION_SAMPLE_EPOCHS = 5  # Run validation and save samples every N epochs
         self.TRAINING_SAMPLE_EPOCHS = 1    # Save training samples every N epochs
+        self.MAX_BATCH_POINTS = 5000      # Max number of batch samples to save
         self.BATCH_SAMPLING_SIZE = 42      # Controls how often samples and logs are generated during training
         # Note: BATCH_SAMPLING_SIZE controls how often samples and logs are generated during training
         # For optimal visualization without gaps:
