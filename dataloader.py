@@ -1,3 +1,5 @@
+# dataloader.py: DataLoader for EdgeConnect+ G1 (Edge Generator) using Canny edge detection.
+
 import os
 import cv2
 import torch
