@@ -3,10 +3,10 @@ import torch
 import json
 import glob
 import matplotlib.pyplot as plt
-from config import config
+from config import config_g1
 
 # Directory for saving checkpoints
-CHECKPOINT_DIR = config.MODEL_CHECKPOINT_DIR
+CHECKPOINT_DIR = config_g1.MODEL_CHECKPOINT_DIR_G1
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
 # Function to save loss data to JSON files
@@ -177,11 +177,11 @@ def save_generated_images(epoch, input_edges, masks, gt_edges, pred_edges, save_
     if batch_idx is not None:
         # For batch saves, use a different directory structure
         batch_idx = batch_idx + 1  # Start indexing from 1
-        base_dir = os.path.join(config.BATCH_SAMPLES_DIR, f"epoch_{epoch}")
+        base_dir = os.path.join(config_g1.BATCH_SAMPLES_DIR_G1, f"epoch_{epoch}")
         save_dir = os.path.join(base_dir, mode)
     else:
         # For epoch saves, use the traditional structure
-        save_dir = save_dir or os.path.join(config.EPOCH_SAMPLES_DIR, mode)
+        save_dir = save_dir or os.path.join(config_g1.EPOCH_SAMPLES_DIR_G1, mode)
     
     os.makedirs(save_dir, exist_ok=True)  # Create folder if it doesn't exist
     batch_size = input_edges.shape[0]
@@ -269,7 +269,7 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d):
     
     if (checkpoint_files):
         latest_checkpoint = checkpoint_files[-1]  # Load most recent checkpoint
-        checkpoint = torch.load(latest_checkpoint, map_location=config.DEVICE, weights_only=False)
+        checkpoint = torch.load(latest_checkpoint, map_location=config_g1.DEVICE_G1, weights_only=False)
         g1.load_state_dict(checkpoint["g1_state_dict"])
         d1.load_state_dict(checkpoint["d1_state_dict"])
         optimizer_g.load_state_dict(checkpoint["optimizer_g"])

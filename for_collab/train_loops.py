@@ -4,7 +4,7 @@ import time
 import torch
 from dataloader import get_dataloader_g1
 from g1_model import adversarial_loss, l1_loss, feature_matching_loss, EdgeGenerator, EdgeDiscriminator
-from config import config
+from config import config_g1
 from utils import save_checkpoint, load_checkpoint, save_losses_to_json, plot_losses, save_generated_images
 
 def train_g1_and_d1():
@@ -16,26 +16,26 @@ def train_g1_and_d1():
     print("\n🔹 Initializing Model & Training Setup...\n")
 
     # Initialize models
-    g1 = EdgeGenerator().to(config.DEVICE)
-    d1 = EdgeDiscriminator().to(config.DEVICE)
+    g1 = EdgeGenerator().to(config_g1.DEVICE_G1)
+    d1 = EdgeDiscriminator().to(config_g1.DEVICE_G1)
 
     # Optimizers using config settings
     optimizer_g = torch.optim.Adam(
         g1.parameters(), 
-        lr=config.LEARNING_RATE, 
-        betas=(config.BETA1, config.BETA2), 
-        weight_decay=config.WEIGHT_DECAY
+        lr=config_g1.LEARNING_RATE_G1, 
+        betas=(config_g1.BETA1_G1, config_g1.BETA2_G1), 
+        weight_decay=config_g1.WEIGHT_DECAY_G1
     )
 
     optimizer_d = torch.optim.Adam(
         d1.parameters(), 
-        lr=config.LEARNING_RATE * config.D2G_LR_RATIO,  
-        betas=(config.BETA1, config.BETA2), 
-        weight_decay=config.WEIGHT_DECAY
+        lr=config_g1.LEARNING_RATE_G1 * config_g1.D2G_LR_RATIO_G1,  
+        betas=(config_g1.BETA1_G1, config_g1.BETA2_G1), 
+        weight_decay=config_g1.WEIGHT_DECAY_G1
     )
 
     # Use Mixed Precision for Faster Training
-    scaler = torch.amp.GradScaler(device=config.DEVICE)
+    scaler = torch.amp.GradScaler(device=config_g1.DEVICE_G1)
 
     print("Loading data into Dataloaders")
     # Load datasets
@@ -43,14 +43,14 @@ def train_g1_and_d1():
     val_dataloader = get_dataloader_g1(split="val", use_mask=True)  
 
     # Training Loop
-    num_epochs = config.EPOCHS
-    print(f"🔹 Training for a max of {num_epochs} Epochs on {config.DEVICE} with early stopping patience of {config.EARLY_STOP_PATIENCE} ...\n")
+    num_epochs = config_g1.EPOCHS_G1
+    print(f"🔹 Training for a max of {num_epochs} Epochs on {config_g1.DEVICE_G1} with early stopping patience of {config_g1.EARLY_STOP_PATIENCE_G1} ...\n")
 
     # Load checkpoint if available
     start_epoch, best_g1_loss, history, batch_losses, epoch_losses = load_checkpoint(g1, d1, optimizer_g, optimizer_d)
 
     # Early Stopping Parameters
-    patience = config.EARLY_STOP_PATIENCE
+    patience = config_g1.EARLY_STOP_PATIENCE_G1
     epochs_no_improve = 0
 
     start_time = time.time()
@@ -63,31 +63,31 @@ def train_g1_and_d1():
         ###### 🔹 Training Phase ######
         for batch_idx, batch in enumerate(train_dataloader):
             input_edges, gt_edges, mask = (
-                batch["input_edge"].to(config.DEVICE),   
-                batch["gt_edge"].to(config.DEVICE),  
-                batch["mask"].to(config.DEVICE)
+                batch["input_edge"].to(config_g1.DEVICE_G1),   
+                batch["gt_edge"].to(config_g1.DEVICE_G1),  
+                batch["mask"].to(config_g1.DEVICE_G1)
             )
 
             ###### 🔹 Train Generator (G1) ######
             g1.train()
             optimizer_g.zero_grad()
-            with torch.amp.autocast(config.DEVICE):  
+            with torch.amp.autocast(config_g1.DEVICE_G1):  
                 pred_edge = g1(input_edges, mask)  
 
                 # L1 Loss
-                g1_loss_l1 = l1_loss(pred_edge, gt_edges) * config.L1_LOSS_WEIGHT  
+                g1_loss_l1 = l1_loss(pred_edge, gt_edges) * config_g1.L1_LOSS_WEIGHT_G1  
 
                 # Store these values for discriminator step
                 pred_edge_detached = pred_edge.detach()
                 
                 # Adversarial Loss
                 fake_pred = d1(input_edges, pred_edge)  
-                target_real = torch.ones_like(fake_pred, device=config.DEVICE) * 0.9  # Smoothed labels
+                target_real = torch.ones_like(fake_pred, device=config_g1.DEVICE_G1) * 0.9  # Smoothed labels
                 g1_loss_adv = adversarial_loss(fake_pred, target_real)  
 
                 # Feature Matching Loss
                 real_features = d1(input_edges, gt_edges).detach()  # Real edge features from D1
-                g1_loss_fm = feature_matching_loss(real_features, fake_pred) * config.FM_LOSS_WEIGHT  
+                g1_loss_fm = feature_matching_loss(real_features, fake_pred) * config_g1.FM_LOSS_WEIGHT_G1
 
                 # Total Generator Loss
                 loss_g = g1_loss_l1 + g1_loss_adv + g1_loss_fm
@@ -99,11 +99,11 @@ def train_g1_and_d1():
             ###### 🔹 Train Discriminator (D1) ######
             optimizer_d.zero_grad()
 
-            with torch.amp.autocast(config.DEVICE):  
+            with torch.amp.autocast(config_g1.DEVICE_G1):  
                 real_pred = d1(input_edges, gt_edges)  
                 fake_pred_detached = d1(input_edges, pred_edge_detached)  # Use the detached tensor
 
-                target_fake = torch.zeros_like(fake_pred_detached, device=config.DEVICE) + 0.1
+                target_fake = torch.zeros_like(fake_pred_detached, device=config_g1.DEVICE_G1) + 0.1
                 real_loss = adversarial_loss(real_pred, target_real)
                 fake_loss = adversarial_loss(fake_pred_detached, target_fake)
 
@@ -124,7 +124,7 @@ def train_g1_and_d1():
             batch_losses['D1_Fake'].append(fake_loss.item())
 
             # Print progress every 100 batches
-            if (batch_idx + 1) % config.BATCH_SAMPLING_SIZE == 0:
+            if (batch_idx + 1) % config_g1.BATCH_SAMPLING_SIZE_G1 == 0:
                 print(f"  🔹 Batch [{batch_idx+1}/{len(train_dataloader)}] - G1 Loss: {loss_g.item():.4f}, D1 Loss: {loss_d.item():.4f}")
 
                 print(f"\n📸 Saving Training Samples for batch {batch_idx+1}...\n")
@@ -142,13 +142,13 @@ def train_g1_and_d1():
         history["d1_loss"].append(avg_d1_loss)
 
         # First save the current losses to JSON files
-        save_losses_to_json(batch_losses, epoch_losses, config.LOSS_PLOT_DIR)
+        save_losses_to_json(batch_losses, epoch_losses, config_g1.LOSS_PLOT_DIR_G1)
         
         # Reset batch losses for the next epoch to avoid duplication
         batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
 
         # Then plot using the saved JSON files
-        plot_losses(config.LOSS_PLOT_DIR)
+        plot_losses(config_g1.LOSS_PLOT_DIR_G1)
 
         # Save best model checkpoint if G1 loss improves
         if avg_g1_loss < best_g1_loss:
@@ -159,7 +159,7 @@ def train_g1_and_d1():
             epochs_no_improve += 1
             
         # **Save Training Samples Every Epoch**
-        if (epoch) % config.TRAINING_SAMPLE_EPOCHS == 0:
+        if (epoch) % config_g1.TRAINING_SAMPLE_EPOCHS_G1 == 0:
             print(f"\n📸 Saving Training Samples for Epoch {epoch}...\n")
             save_generated_images(
                 epoch=epoch+1, 
@@ -171,15 +171,15 @@ def train_g1_and_d1():
             )
 
         ###### 🔹 Validation Phase ######
-        if (epoch) % config.VALIDATION_SAMPLE_EPOCHS == 0:
+        if (epoch) % config_g1.VALIDATION_SAMPLE_EPOCHS_G1 == 0:
             print(f"\n🔍 Running Validation for Epoch {epoch}...\n")
             g1.eval()
             with torch.no_grad():
                 for val_batch in val_dataloader:
                     val_input_edges, val_gt_edges, val_mask = (
-                        val_batch["input_edge"].to(config.DEVICE),   
-                        val_batch["gt_edge"].to(config.DEVICE),  
-                        val_batch["mask"].to(config.DEVICE)
+                        val_batch["input_edge"].to(config_g1.DEVICE_G1),   
+                        val_batch["gt_edge"].to(config_g1.DEVICE_G1),  
+                        val_batch["mask"].to(config_g1.DEVICE_G1)
                     )
 
                     val_pred_edge = g1(val_input_edges, val_mask)
