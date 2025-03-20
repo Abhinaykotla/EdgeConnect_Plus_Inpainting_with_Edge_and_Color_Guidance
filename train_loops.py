@@ -5,6 +5,46 @@ from g1_model import adversarial_loss, l1_loss, feature_matching_loss, EdgeGener
 from config import config
 from utils import save_checkpoint, load_checkpoint, save_losses_to_json, plot_losses, save_generated_images
 
+class EMA:
+    """
+    Exponential Moving Average for model weights.
+    This helps produce more stable results by maintaining a moving average of model parameters.
+    """
+    def __init__(self, model, decay=0.999):
+        self.model = model
+        self.decay = decay
+        self.shadow = {}
+        self.backup = {}
+        
+        # Register model parameters
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                self.shadow[name] = param.data.clone()
+    
+    def update(self):
+        """Update EMA parameters after each optimization step"""
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                assert name in self.shadow
+                new_average = self.decay * self.shadow[name] + (1.0 - self.decay) * param.data
+                self.shadow[name] = new_average.clone()
+    
+    def apply_shadow(self):
+        """Apply EMA parameters to the model for inference"""
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                assert name in self.shadow
+                self.backup[name] = param.data.clone()
+                param.data = self.shadow[name]
+    
+    def restore(self):
+        """Restore original parameters to the model after inference"""
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                assert name in self.backup
+                param.data = self.backup[name]
+        self.backup = {}
+
 def train_g1_and_d1():
     """
     Main training loop for the EdgeConnect+ model.
@@ -16,6 +56,9 @@ def train_g1_and_d1():
     # Initialize models
     g1 = EdgeGenerator().to(config.DEVICE)
     d1 = EdgeDiscriminator().to(config.DEVICE)
+    
+    # Initialize EMA for G1 model with a decay rate of 0.999
+    g1_ema = EMA(g1, decay=0.999)
 
     # Optimizers using config settings
     optimizer_g = torch.optim.Adam(
@@ -93,6 +136,9 @@ def train_g1_and_d1():
             scaler.scale(loss_g).backward()
             scaler.step(optimizer_g)
             scaler.update()
+            
+            # Update EMA model after each generator update
+            g1_ema.update()
 
             ###### 🔹 Train Discriminator (D1) ######
             optimizer_d.zero_grad()
@@ -126,7 +172,13 @@ def train_g1_and_d1():
                 print(f"  🔹 Batch [{batch_idx+1}/{len(train_dataloader)}] - G1 Loss: {loss_g.item():.4f}, D1 Loss: {loss_d.item():.4f}")
 
                 print(f"\n📸 Saving Training Samples for batch {batch_idx+1}...\n")
-                save_generated_images(epoch, input_edges, mask, gt_edges, pred_edge, mode="train", batch_idx=batch_idx)
+                # Apply EMA for sample generation
+                g1_ema.apply_shadow()
+                with torch.no_grad():  # Add torch.no_grad() here for consistency
+                    pred_edge_ema = g1(input_edges, mask)
+                # Use epoch, not epoch+1 for consistent numbering
+                save_generated_images(epoch, input_edges, gt_edges, pred_edge_ema, mask, mode="train", batch_idx=batch_idx+1)
+                g1_ema.restore()
 
         # Compute average loss for the epoch
         avg_g1_loss = total_g_loss / len(train_dataloader)
@@ -151,7 +203,11 @@ def train_g1_and_d1():
         # Save best model checkpoint if G1 loss improves
         if avg_g1_loss < best_g1_loss:
             best_g1_loss = avg_g1_loss
+            # Apply EMA weights for saving the best model
+            g1_ema.apply_shadow()
+            # Don't pass the empty batch_losses here
             save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_g1_loss, history, batch_losses, epoch_losses)
+            g1_ema.restore()
             epochs_no_improve = 0  # Reset early stopping counter
         else:
             epochs_no_improve += 1
@@ -159,19 +215,26 @@ def train_g1_and_d1():
         # **Save Training Samples Every Epoch**
         if (epoch) % config.TRAINING_SAMPLE_EPOCHS == 0:
             print(f"\n📸 Saving Training Samples for Epoch {epoch}...\n")
-            save_generated_images(
-                epoch=epoch+1, 
+            # Apply EMA weights for visualization
+            g1_ema.apply_shadow()
+            with torch.no_grad():
+                pred_edge_ema = g1(input_edges, mask)
+                save_generated_images(
+                epoch=epoch, 
                 input_edges=input_edges, 
                 gt_edges=gt_edges, 
-                pred_edges=pred_edge, 
+                pred_edges=pred_edge_ema, 
                 masks=mask,
                 mode="train"
             )
+            g1_ema.restore()
 
         ###### 🔹 Validation Phase ######
         if (epoch) % config.VALIDATION_SAMPLE_EPOCHS == 0:
             print(f"\n🔍 Running Validation for Epoch {epoch}...\n")
             g1.eval()
+            # Apply EMA weights for validation
+            g1_ema.apply_shadow()
             with torch.no_grad():
                 for val_batch in val_dataloader:
                     val_input_edges, val_gt_edges, val_mask = (
@@ -184,7 +247,7 @@ def train_g1_and_d1():
 
                     # Save validation images
                     save_generated_images(
-                        epoch=epoch+1, 
+                        epoch=epoch, 
                         input_edges=val_input_edges, 
                         gt_edges=val_gt_edges, 
                         pred_edges=val_pred_edge, 
@@ -192,6 +255,7 @@ def train_g1_and_d1():
                         mode="val"
                     )
                     break  # Save only 1 batch per epoch
+            g1_ema.restore()
 
         # Early stopping check
         if epochs_no_improve >= patience:
