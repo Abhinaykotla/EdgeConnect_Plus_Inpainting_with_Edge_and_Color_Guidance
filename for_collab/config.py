@@ -32,13 +32,14 @@ class Config:
         # Logging & Checkpoints
         self.VALIDATION_SAMPLE_EPOCHS = 5  # Run validation every N epochs
         self.TRAINING_SAMPLE_EPOCHS = 1    # Save training samples every N epochs
-        self.BATCH_SAMPLING_SIZE = 285     # Controls how often samples and logs are generated during training
+        self.MAX_BATCH_POINTS = 10000       # Max number of batch samples to save
+        self.BATCH_SAMPLING_SIZE = 169     # Controls how often samples and logs are generated during training
         # Note: BATCH_SAMPLING_SIZE controls how often samples and logs are generated during training
         # For optimal visualization without gaps:
         # - Calculate total_batches = dataset_size / BATCH_SIZE
-        #   (For CelebA: 162079 images / 192 batch size = 855 batches)
+        #   (For CelebA: 162079 images / 192 batch size = 845 batches)
         # - Choose BATCH_SAMPLING_SIZE as a divisor of total_batches
-        #   (e.g., values like 855/3 = 285)
+        #   (e.g., values like 845/5 = 169)
         # This ensures consistent sampling across the entire dataset
 
         # System Settings
