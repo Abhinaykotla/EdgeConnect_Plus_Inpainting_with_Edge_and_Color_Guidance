@@ -5,7 +5,7 @@ import torch
 from dataloader import get_dataloader_g1
 from g1_model import adversarial_loss, l1_loss, feature_matching_loss, EdgeGenerator, EdgeDiscriminator
 from config import config
-from utils import save_checkpoint, load_checkpoint, save_losses_to_json, plot_losses, save_generated_images
+from utils import save_checkpoint, load_checkpoint, save_losses_to_json, plot_losses, save_generated_images, print_model_info
 
 class EMA:
     """
@@ -118,6 +118,10 @@ def train_g1_and_d1():
     epochs_no_improve = 0
 
     start_time = time.time()
+
+    # Example: Print information for G1 (Generator) and D1 (Discriminator)
+    print_model_info(g1, model_name="Generator (G1)")
+    print_model_info(d1, model_name="Discriminator (D1)")
 
     for epoch in range(start_epoch, num_epochs + 1):
         epoch_start_time = time.time()
