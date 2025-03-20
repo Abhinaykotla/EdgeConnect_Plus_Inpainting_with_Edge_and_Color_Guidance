@@ -51,8 +51,8 @@ class Config:
         self.LOSS_PLOT_DIR = os.path.abspath(os.path.join(base_dir, "models/plots"))  # Loss visualization charts
 
         # Optimizer Parameters
-        self.LEARNING_RATE = 0.00005       # Base learning rate for Adam optimizer
-        self.D2G_LR_RATIO = 0.005          # Ratio between discriminator and generator learning rates
+        self.LEARNING_RATE = 0.00009       # Base learning rate for Adam optimizer Best value: 0.000493
+        self.D2G_LR_RATIO = 0.0025          # Ratio between discriminator and generator learning rates
         self.BETA1 = 0.5                   # Adam optimizer beta1 parameter (momentum)
         self.BETA2 = 0.999                 # Adam optimizer beta2 parameter (RMSprop)
         self.WEIGHT_DECAY = 0.00005        # L2 regularization strength in Adam
