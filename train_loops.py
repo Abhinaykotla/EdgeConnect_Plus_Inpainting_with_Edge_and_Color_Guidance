@@ -1,3 +1,5 @@
+# train_loops.py
+
 import time
 import torch
 from dataloader import get_dataloader_g1
@@ -45,6 +47,27 @@ class EMA:
                 param.data = self.backup[name]
         self.backup = {}
 
+
+def gradient_penalty(discriminator, real_samples, fake_samples):
+    """
+    Implements Gradient Penalty for WGAN-GP and helps stabilize training.
+    """
+    alpha = torch.rand(real_samples.size(0), 1, 1, 1, device=config.DEVICE)
+    interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
+    d_interpolates = discriminator(interpolates, real_samples)
+
+    grad_outputs = torch.ones(d_interpolates.size(), device=config.DEVICE)
+    gradients = torch.autograd.grad(
+        outputs=d_interpolates, inputs=interpolates,
+        grad_outputs=grad_outputs, create_graph=True, retain_graph=True, only_inputs=True
+    )[0]
+
+    gradients = gradients.view(gradients.size(0), -1)
+    gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+    return gradient_penalty
+
+
+# Training Loop for EdgeConnect+ G1 Model
 def train_g1_and_d1():
     """
     Main training loop for the EdgeConnect+ model.
@@ -151,7 +174,10 @@ def train_g1_and_d1():
                 real_loss = adversarial_loss(real_pred, target_real)
                 fake_loss = adversarial_loss(fake_pred_detached, target_fake)
 
-                loss_d = (real_loss + fake_loss) / 2 
+                lambda_gp = 10  # Gradient penalty weight
+                gp = gradient_penalty(d1, gt_edges, pred_edge_detached)
+                loss_d = (real_loss + fake_loss) / 2 + lambda_gp * gp
+ 
 
             scaler.scale(loss_d).backward()
             scaler.step(optimizer_d)
