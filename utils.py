@@ -305,3 +305,23 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d):
             print("Warning: Could not load history from JSON.")
     
     return 1, float("inf"), {"g1_loss": [], "d1_loss": []}, batch_losses, epoch_losses
+
+def print_model_info(model, model_name="Model"):
+    """
+    Prints detailed information about the model, including:
+    - Total number of parameters
+    - Trainable parameters
+    - Parameters per layer
+    """
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    print(f"\n🔹 {model_name} Summary")
+    print(f"🔹 Total Parameters: {total_params:,}")
+    print(f"🔹 Trainable Parameters: {trainable_params:,}")
+    print("🔹 Layer-wise Breakdown:")
+
+    for name, param in model.named_parameters():
+        print(f"   {name}: {param.numel()} parameters")
+
+    return total_params, trainable_params
