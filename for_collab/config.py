@@ -5,7 +5,7 @@ import os
 
 class Config_G1:
     def __init__(self):
-        # Base directory inside Google Drive for Colab integration
+        # Base directory inside Google Drive for Colab integration        
         base_drive_dir = "/content/drive/MyDrive/edgeconnect/"
 
         # Dataset paths configuration
@@ -32,13 +32,14 @@ class Config_G1:
         # Logging & Checkpoints
         self.VALIDATION_SAMPLE_EPOCHS_G1 = 5  # Run validation every N epochs
         self.TRAINING_SAMPLE_EPOCHS_G1 = 1    # Save training samples every N epochs
-        self.BATCH_SAMPLING_SIZE_G1 = 285     # Controls how often samples and logs are generated during training
-        # Note: BATCH_SAMPLING_SIZE_G1 controls how often samples and logs are generated during training
+        self.MAX_BATCH_POINTS_G1 = 10000       # Max number of batch samples to save
+        self.BATCH_SAMPLING_SIZE_G1 = 169     # Controls how often samples and logs are generated during training
+        # Note: BATCH_SAMPLING_SIZE controls how often samples and logs are generated during training
         # For optimal visualization without gaps:
-        # - Calculate total_batches = dataset_size / BATCH_SIZE_G1
-        #   (For CelebA: 162079 images / 192 batch size = 855 batches)
-        # - Choose BATCH_SAMPLING_SIZE_G1 as a divisor of total_batches
-        #   (e.g., values like 855/3 = 285)
+        # - Calculate total_batches = dataset_size / BATCH_SIZE
+        #   (For CelebA: 162079 images / 192 batch size = 845 batches)
+        # - Choose BATCH_SAMPLING_SIZE as a divisor of total_batches
+        #   (e.g., values like 845/5 = 169)
         # This ensures consistent sampling across the entire dataset
 
         # System Settings
@@ -51,16 +52,16 @@ class Config_G1:
         self.LOSS_PLOT_DIR_G1 = os.path.join(base_drive_dir, "models/plots")  # For loss visualizations
 
         # Optimizer Parameters
-        self.LEARNING_RATE_G1 = 0.0001        # Base learning rate for Adam optimizer
-        self.D2G_LR_RATIO_G1 = 0.02           # Ratio between discriminator and generator learning rates
+        self.LEARNING_RATE_G1= 0.00009       # Base learning rate for Adam optimizer Best : 0.000493
+        self.D2G_LR_RATIO_G1 = 0.0025          # Ratio between discriminator and generator learning rates
         self.BETA1_G1 = 0.5                   # Adam optimizer beta1 parameter (momentum)
         self.BETA2_G1 = 0.999                 # Adam optimizer beta2 parameter (RMSprop)
         self.WEIGHT_DECAY_G1 = 0.00005        # L2 regularization strength in Adam
 
         # Loss Weights (Controls the balance between different loss components)
         self.L1_LOSS_WEIGHT_G1 = 1            # Pixel-wise reconstruction loss weight
-        self.ADV_LOSS_WEIGHT_G1 = 1           # Adversarial loss weight for generators
-        self.FM_LOSS_WEIGHT_G1 = 5            # Feature matching loss weight
+        self.ADV_LOSS_WEIGHT_G1 = 0.5         # Adversarial loss weight for generators
+        self.FM_LOSS_WEIGHT_G1 = 1.5            # Feature matching loss weight
         self.STYLE_LOSS_WEIGHT_G1 = 250       # Style transfer loss weight
         self.CONTENT_LOSS_WEIGHT_G1 = 1.0     # Content preservation loss weight
 
