@@ -1,4 +1,4 @@
-# config.py - Configuration parameters for the EdgeConnect+ model
+# config.py
 
 import torch
 import os
