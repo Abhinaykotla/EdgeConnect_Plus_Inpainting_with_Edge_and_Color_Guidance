@@ -145,17 +145,19 @@ def train_g1_and_d1():
 
         ###### 🔹 Training Phase ######
         for batch_idx, batch in enumerate(train_dataloader):
-            input_edges, gt_edges, mask = (
-                batch["input_edge"].to(config.DEVICE),   
-                batch["gt_edge"].to(config.DEVICE),  
-                batch["mask"].to(config.DEVICE)
-            )
+            input_edges, gt_edges, mask, gray = (
+                batch["input_edge"].to(config.DEVICE),
+                batch["gt_edge"].to(config.DEVICE),
+                batch["mask"].to(config.DEVICE),
+                batch["gray"].to(config.DEVICE)
+                )
+
 
             ###### 🔹 Train Generator (G1) ######
             g1.train()
             optimizer_g.zero_grad()
             with torch.amp.autocast(config.DEVICE):  
-                pred_edge = g1(input_edges, mask)  
+                pred_edge = g1(input_edges, mask, gray)  
 
                 # L1 Loss
                 g1_loss_l1 = l1_loss(pred_edge, gt_edges) * config.L1_LOSS_WEIGHT  
@@ -220,9 +222,9 @@ def train_g1_and_d1():
                 # Apply EMA for sample generation
                 g1_ema.apply_shadow()
                 with torch.no_grad():  # Add torch.no_grad() here for consistency
-                    pred_edge_ema = g1(input_edges, mask)
+                    pred_edge_ema = g1(input_edges, mask, gray)
                 # Use epoch, not epoch+1 for consistent numbering
-                save_generated_images(epoch, input_edges, mask, gt_edges, pred_edge_ema, mode="train", batch_idx=batch_idx+1)
+                save_generated_images(epoch, input_edges, mask, gt_edges, gray, pred_edge_ema, mode="train", batch_idx=batch_idx+1)
                 g1_ema.restore()
 
         # Compute average loss for the epoch
@@ -263,13 +265,14 @@ def train_g1_and_d1():
             # Apply EMA weights for visualization
             g1_ema.apply_shadow()
             with torch.no_grad():
-                pred_edge_ema = g1(input_edges, mask)
+                pred_edge_ema = g1(input_edges, mask, gray)
                 save_generated_images(
                 epoch=epoch, 
                 input_edges=input_edges, 
                 gt_edges=gt_edges, 
                 pred_edges=pred_edge_ema, 
                 masks=mask,
+                gray=gray,
                 mode="train"
             )
             g1_ema.restore()
@@ -282,13 +285,14 @@ def train_g1_and_d1():
             g1_ema.apply_shadow()
             with torch.no_grad():
                 for val_batch in val_dataloader:
-                    val_input_edges, val_gt_edges, val_mask = (
+                    val_input_edges, val_gt_edges, val_mask, val_gray = (
                         val_batch["input_edge"].to(config.DEVICE),   
                         val_batch["gt_edge"].to(config.DEVICE),  
-                        val_batch["mask"].to(config.DEVICE)
+                        val_batch["mask"].to(config.DEVICE),
+                        val_batch["gray"].to(config.DEVICE)
                     )
 
-                    val_pred_edge = g1(val_input_edges, val_mask)
+                    val_pred_edge = g1(val_input_edges, val_mask, val_gray)
 
                     # Save validation images
                     save_generated_images(
@@ -297,6 +301,7 @@ def train_g1_and_d1():
                         gt_edges=val_gt_edges, 
                         pred_edges=val_pred_edge, 
                         masks=val_mask,
+                        gray = val_gray,
                         mode="val"
                     )
                     break  # Save only 1 batch per epoch
