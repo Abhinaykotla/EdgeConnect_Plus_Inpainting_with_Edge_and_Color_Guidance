@@ -117,8 +117,13 @@ def train_g1_and_d1():
     # Print loss weights
     print(f"🔹 Loss Weights → L1: {config.L1_LOSS_WEIGHT}, Adv: {config.ADV_LOSS_WEIGHT}, FM: {config.FM_LOSS_WEIGHT}")
 
+    print("🔹 Checking for old checkpoints\n")
+    print("Before loading:", hash(tuple(p.data_ptr() for p in g1.parameters())))
+
     # Load checkpoint if available
-    start_epoch, best_g1_loss, history, batch_losses, epoch_losses = load_checkpoint(g1, d1, optimizer_g, optimizer_d)
+    start_epoch, best_g1_loss, history, batch_losses, epoch_losses = load_checkpoint(g1, d1, optimizer_g, optimizer_d, g1_ema)
+
+    print("After loading:", hash(tuple(p.data_ptr() for p in g1.parameters())))
 
     # Early Stopping Parameters
     patience = config.EARLY_STOP_PATIENCE
