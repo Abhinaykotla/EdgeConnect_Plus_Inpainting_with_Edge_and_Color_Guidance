@@ -5,10 +5,10 @@ import torch
 import json
 import glob
 import matplotlib.pyplot as plt
-from config import config_g1
+from config import config
 
 # Directory for saving checkpoints
-CHECKPOINT_DIR = config_g1.MODEL_CHECKPOINT_DIR_G1
+CHECKPOINT_DIR = config.MODEL_CHECKPOINT_DIR
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
 # Function to save loss data to JSON files
@@ -29,7 +29,7 @@ def save_losses_to_json(batch_losses, epoch_losses, save_dir):
                 
                 # Check if we need to downsample (if getting too large)
                 total_points = len(existing_batch_data['batch_idx']) + len(batch_losses['batch_idx'])
-                max_points = config_g1.MAX_BATCH_POINTS_G1  # Maximum points to store
+                max_points = config.MAX_BATCH_POINTS  # Maximum points to store
                 
                 if total_points > max_points:
                     # Downsample the existing data to half
@@ -161,9 +161,21 @@ def plot_losses(save_dir):
     # plt.savefig(os.path.join(save_dir, 'loss_trends_latest.png')) # Always overwrite this one for the latest view
     plt.close()
 
-def save_generated_images(epoch, input_edges, masks, gt_edges, pred_edges, save_dir=None, mode="train", batch_idx=None):
+import os
+import torch
+import matplotlib.pyplot as plt
+from config import config
+
+import os
+import torch
+import matplotlib.pyplot as plt
+from config import config
+
+def save_generated_images(epoch, input_edges, masks, gt_edges, gray, pred_edges, save_dir=None, mode="train", batch_idx=None):
     """
-    Saves generated images with an option for batch-specific directories.
+    Saves generated images in a 1x2 grid:
+    - Left (Big Box) → 2x2 subplots (Input Edges, Mask, GT Edges, Grayscale)
+    - Right (Big Box) → 1 large subplot (Generated Edges)
     
     Args:
         epoch: Current epoch number
@@ -171,63 +183,73 @@ def save_generated_images(epoch, input_edges, masks, gt_edges, pred_edges, save_
         gt_edges: Ground truth edge images
         pred_edges: Generated edge images
         masks: Mask images
+        gray: Grayscale images
         save_dir: Base directory to save images
         mode: Training mode ("train" or "val")
         batch_idx: Optional batch index for batch-specific saves
     """
-    # Set up paths based on whether this is a batch save or epoch save
+    # Set up save directory
     if batch_idx is not None:
-        # For batch saves, use a different directory structure
-        batch_idx = batch_idx + 1  # Start indexing from 1
-        base_dir = os.path.join(config_g1.BATCH_SAMPLES_DIR_G1, f"epoch_{epoch}")
+        batch_idx = batch_idx + 1  
+        base_dir = os.path.join(config.BATCH_SAMPLES_DIR, f"epoch_{epoch}")
         save_dir = os.path.join(base_dir, mode)
     else:
-        # For epoch saves, use the traditional structure
-        save_dir = save_dir or os.path.join(config_g1.EPOCH_SAMPLES_DIR_G1, mode)
+        save_dir = save_dir or os.path.join(config.EPOCH_SAMPLES_DIR, mode)
     
-    os.makedirs(save_dir, exist_ok=True)  # Create folder if it doesn't exist
+    os.makedirs(save_dir, exist_ok=True)  
     batch_size = input_edges.shape[0]
 
-    # Normalize for visualization
+    # Convert tensors to CPU for visualization
     input_edges = input_edges.cpu().detach()
     masks = masks.cpu().detach()
     gt_edges = gt_edges.cpu().detach()
     pred_edges = pred_edges.cpu().detach()
+    gray = gray.cpu().detach()
 
-    for i in range(min(batch_size, 5)):  # Save 5 sample images
-        fig, axes = plt.subplots(2, 2, figsize=(8, 8))  # 2x2 grid of images
+    for i in range(min(batch_size, 5)):  # Save up to 5 samples
+        fig = plt.figure(figsize=(12, 6))  # Create figure
 
-        # Input Edges - top left
-        axes[0, 0].imshow(input_edges[i].squeeze(), cmap="gray")
-        axes[0, 0].set_title(f"{mode.upper()} Input")
-        axes[0, 0].axis("off")
-        
-        # Mask - top right
-        axes[0, 1].imshow(masks[i].squeeze(), cmap="gray")
-        axes[0, 1].set_title(f"{mode.upper()} Mask")
-        axes[0, 1].axis("off")
+        # Define a 1x2 grid layout
+        grid = fig.add_gridspec(1, 2, width_ratios=[1, 1])  # Left (1) | Right (1)
 
-        # Ground Truth Edges - bottom left
-        axes[1, 0].imshow(gt_edges[i].squeeze(), cmap="gray")
-        axes[1, 0].set_title(f"{mode.upper()} Ground Truth")
-        axes[1, 0].axis("off")
+        # LEFT BIG BOX (Subdivided into 2x2)
+        left_grid = grid[0].subgridspec(2, 2)  # Subdivide left into 2x2
 
-        # Generated Edges - bottom right
-        axes[1, 1].imshow(pred_edges[i].squeeze(), cmap="gray")
-        axes[1, 1].set_title(f"{mode.upper()} Generated")
-        axes[1, 1].axis("off")
+        ax1 = fig.add_subplot(left_grid[0, 0])  # Top Left (Input Edges)
+        ax1.imshow(input_edges[i].squeeze(), cmap="gray")
+        ax1.set_title("Input Edges")
+        ax1.axis("off")
+
+        ax2 = fig.add_subplot(left_grid[0, 1])  # Top Right (Mask)
+        ax2.imshow(masks[i].squeeze(), cmap="gray")
+        ax2.set_title("Mask")
+        ax2.axis("off")
+
+        ax3 = fig.add_subplot(left_grid[1, 0])  # Bottom Left (GT Edges)
+        ax3.imshow(gt_edges[i].squeeze(), cmap="gray")
+        ax3.set_title("Ground Truth Edges")
+        ax3.axis("off")
+
+        ax4 = fig.add_subplot(left_grid[1, 1])  # Bottom Right (Grayscale)
+        ax4.imshow(gray[i].squeeze(), cmap="gray")
+        ax4.set_title("Grayscale Image")
+        ax4.axis("off")
+
+        # RIGHT BIG BOX (Generated Edges)
+        ax5 = fig.add_subplot(grid[1])  # Right box (full height)
+        ax5.imshow(pred_edges[i].squeeze(), cmap="gray")
+        ax5.set_title(f"{mode.upper()} Generated")
+        ax5.axis("off")
 
         plt.tight_layout()
 
-        # Save image with appropriate filename based on batch or epoch
-        if batch_idx is not None:
-            filename = f"{mode}_epoch_{epoch}_batch_{batch_idx}_sample_{i}.png"
-        else:
-            filename = f"{mode}_epoch_{epoch}_sample_{i}.png"
-            
+        # Save the figure
+        filename = f"{mode}_epoch_{epoch}_batch_{batch_idx}_sample_{i}.png" if batch_idx else f"{mode}_epoch_{epoch}_sample_{i}.png"
         save_path = os.path.join(save_dir, filename)
         plt.savefig(save_path)
-        plt.close(fig)  # Close figure to free memory
+        plt.close(fig)
+
+
 
 # Function to save model and training history
 def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses):
@@ -271,7 +293,7 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d):
     
     if (checkpoint_files):
         latest_checkpoint = checkpoint_files[-1]  # Load most recent checkpoint
-        checkpoint = torch.load(latest_checkpoint, map_location=config_g1.DEVICE_G1, weights_only=False)
+        checkpoint = torch.load(latest_checkpoint, map_location=config.DEVICE, weights_only=False)
         g1.load_state_dict(checkpoint["g1_state_dict"])
         d1.load_state_dict(checkpoint["d1_state_dict"])
         optimizer_g.load_state_dict(checkpoint["optimizer_g"])
@@ -305,3 +327,23 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d):
             print("Warning: Could not load history from JSON.")
     
     return 1, float("inf"), {"g1_loss": [], "d1_loss": []}, batch_losses, epoch_losses
+
+def print_model_info(model, model_name="Model"):
+    """
+    Prints detailed information about the model, including:
+    - Total number of parameters
+    - Trainable parameters
+    - Parameters per layer
+    """
+    total_params = sum(p.numel() for p in model.parameters())
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    print(f"\n🔹 {model_name} Summary")
+    print(f"🔹 Total Parameters: {total_params:,}")
+    print(f"🔹 Trainable Parameters: {trainable_params:,}")
+    print("🔹 Layer-wise Breakdown:")
+
+    for name, param in model.named_parameters():
+        print(f"   {name}: {param.numel()} parameters")
+
+    return total_params, trainable_params
