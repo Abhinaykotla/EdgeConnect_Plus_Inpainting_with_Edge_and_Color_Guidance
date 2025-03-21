@@ -35,7 +35,7 @@ class EdgeGenerator(nn.Module):
 
         # Initial Convolution
         self.init_conv = nn.Sequential(
-            nn.Conv2d(2, 64, kernel_size=7, padding=3),
+            nn.Conv2d(3, 64, kernel_size=7, padding=3),
             nn.InstanceNorm2d(64),
             nn.ReLU(inplace=True)
         )
@@ -71,8 +71,8 @@ class EdgeGenerator(nn.Module):
         self.final_conv = nn.Conv2d(64, 1, kernel_size=7, padding=3)
         self.activation = nn.Sigmoid()  # Normalized output
 
-    def forward(self, img, mask):
-        x = torch.cat((img, mask), dim=1)  # Concatenate image and mask
+    def forward(self, img, mask, gray):
+        x = torch.cat((img, mask, gray), dim=1)  # Concatenate image and mask
         x = self.init_conv(x)
         x = self.down1(x)
         x = self.down2(x)
