@@ -52,15 +52,15 @@ class Config:
 
         # Optimizer Parameters
         self.LEARNING_RATE = 0.0001       # Base learning rate for Adam optimizer
-        self.D2G_LR_RATIO = 0.05           # Ratio between discriminator and generator learning rates
+        self.D2G_LR_RATIO = 0.02           # Ratio between discriminator and generator learning rates
         self.BETA1 = 0.0                  # Adam optimizer beta1 parameter (momentum)
         self.BETA2 = 0.9                  # Adam optimizer beta2 parameter (RMSprop)
         self.WEIGHT_DECAY = 0.00005        # L2 regularization strength in Adam
 
         # Loss Weights (Controls the balance between different loss components)
-        self.L1_LOSS_WEIGHT = 0.8            # Pixel-wise reconstruction loss weight
-        self.ADV_LOSS_WEIGHT = 1.3         # Adversarial loss weight for generators
-        self.FM_LOSS_WEIGHT = 4            # Feature matching loss weight
+        self.L1_LOSS_WEIGHT = 0.5            # Pixel-wise reconstruction loss weight
+        self.ADV_LOSS_WEIGHT = 1.8         # Adversarial loss weight for generators
+        self.FM_LOSS_WEIGHT = 5.5            # Feature matching loss weight
         self.STYLE_LOSS_WEIGHT = 250       # Style transfer loss weight
         self.CONTENT_LOSS_WEIGHT = 1.0     # Content preservation loss weight
 
@@ -82,7 +82,7 @@ class Config:
         self.SEED = 42                     # Random seed for reproducibility
         self.GPU_IDS = [0]                 # GPU device IDs to use (for multi-GPU setups)
         self.DEBUG = 0                     # Debug level (0 = off, higher = more verbose)
-        self.VERBOSE = 1                   # Verbosity level of training output
+        self.VERBOSE = True                   # Verbosity level of training output
 
 # Initialize Config
 config = Config()
