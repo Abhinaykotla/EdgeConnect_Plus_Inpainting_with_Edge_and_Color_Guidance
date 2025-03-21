@@ -161,16 +161,6 @@ def plot_losses(save_dir):
     # plt.savefig(os.path.join(save_dir, 'loss_trends_latest.png')) # Always overwrite this one for the latest view
     plt.close()
 
-import os
-import torch
-import matplotlib.pyplot as plt
-from config import config
-
-import os
-import torch
-import matplotlib.pyplot as plt
-from config import config
-
 def save_generated_images(epoch, input_edges, masks, gt_edges, gray, pred_edges, save_dir=None, mode="train", batch_idx=None):
     """
     Saves generated images in a 1x2 grid:
