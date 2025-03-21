@@ -1,5 +1,3 @@
-# utils.py
-
 import os
 import torch
 import json
@@ -161,16 +159,6 @@ def plot_losses(save_dir):
     # plt.savefig(os.path.join(save_dir, 'loss_trends_latest.png')) # Always overwrite this one for the latest view
     plt.close()
 
-import os
-import torch
-import matplotlib.pyplot as plt
-from config import config
-
-import os
-import torch
-import matplotlib.pyplot as plt
-from config import config
-
 def save_generated_images(epoch, input_edges, masks, gt_edges, gray, pred_edges, save_dir=None, mode="train", batch_idx=None):
     """
     Saves generated images in a 1x2 grid:
@@ -249,10 +237,8 @@ def save_generated_images(epoch, input_edges, masks, gt_edges, gray, pred_edges,
         plt.savefig(save_path)
         plt.close(fig)
 
-
-
 # Function to save model and training history
-def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses):
+def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses, ema):
     checkpoint = {
         "epoch": epoch,
         "g1_state_dict": g1.state_dict(),
@@ -262,7 +248,8 @@ def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history,
         "best_loss": best_loss,
         "history": history,
         "batch_losses": batch_losses,
-        "epoch_losses": epoch_losses
+        "epoch_losses": epoch_losses,
+        "ema_shadow": ema.shadow  # Save EMA shadow parameters
     }
 
     # Save the checkpoint file
@@ -286,7 +273,7 @@ def manage_checkpoints():
         print(f"🗑️ Deleted old checkpoint: {checkpoint_files[0]}")
 
 # Load checkpoint with enhanced data recovery
-def load_checkpoint(g1, d1, optimizer_g, optimizer_d):
+def load_checkpoint(g1, d1, optimizer_g, optimizer_d, ema):
     checkpoint_files = sorted(glob.glob(os.path.join(CHECKPOINT_DIR, "checkpoint_epoch_*.pth")), key=os.path.getmtime)
     batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
     epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
@@ -306,6 +293,10 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d):
             batch_losses = checkpoint["batch_losses"]
         if "epoch_losses" in checkpoint:
             epoch_losses = checkpoint["epoch_losses"]
+        
+        # Restore EMA shadow parameters
+        if "ema_shadow" in checkpoint:
+            ema.shadow = checkpoint["ema_shadow"]
             
         start_epoch = checkpoint["epoch"] + 1
         print(f"🔄 Resuming training from epoch {start_epoch}, Best G1 Loss: {best_loss:.4f}")
