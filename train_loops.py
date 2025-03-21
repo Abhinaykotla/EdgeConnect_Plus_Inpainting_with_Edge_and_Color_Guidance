@@ -98,6 +98,10 @@ def train_g1_and_d1():
         weight_decay=config.WEIGHT_DECAY
     )
 
+    # Define learning rate schedulers
+    scheduler_g = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_g, mode='min', patience=3, factor=0.6, verbose=True)
+    scheduler_d = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_d, mode='min', patience=3, factor=0.5, verbose=True)
+
     # Use Mixed Precision for Faster Training
     scaler = torch.amp.GradScaler(device=config.DEVICE)
 
@@ -109,6 +113,9 @@ def train_g1_and_d1():
     # Training Loop
     num_epochs = config.EPOCHS
     print(f"🔹 Training for a max of {num_epochs} Epochs on {config.DEVICE} with early stopping patience of {config.EARLY_STOP_PATIENCE} ...\n")
+
+    # Print loss weights
+    print(f"🔹 Loss Weights → L1: {config.L1_LOSS_WEIGHT}, Adv: {config.ADV_LOSS_WEIGHT}, FM: {config.FM_LOSS_WEIGHT}")
 
     # Load checkpoint if available
     start_epoch, best_g1_loss, history, batch_losses, epoch_losses = load_checkpoint(g1, d1, optimizer_g, optimizer_d)
@@ -127,6 +134,14 @@ def train_g1_and_d1():
         epoch_start_time = time.time()
         total_g_loss = 0.0
         total_d_loss = 0.0
+
+        # Print current learning rates
+        current_lr_g = optimizer_g.param_groups[0]['lr']
+        current_lr_d = optimizer_d.param_groups[0]['lr']
+        print(f"🔹 Current Learning Rates → G1: {current_lr_g:.9f}, D1: {current_lr_d:.9f}")
+
+        # Print loss weights
+        print(f"🔹 Loss Weights → L1: {config.L1_LOSS_WEIGHT}, Adv: {config.ADV_LOSS_WEIGHT}, FM: {config.FM_LOSS_WEIGHT}")
 
         ###### 🔹 Training Phase ######
         for batch_idx, batch in enumerate(train_dataloader):
@@ -295,6 +310,11 @@ def train_g1_and_d1():
         epoch_end_time = time.time()
         epoch_duration = epoch_end_time - epoch_start_time
         print(f"\n🔹 Epoch [{epoch}/{num_epochs}] Completed in {epoch_duration:.2f}s - G1 Loss: {avg_g1_loss:.4f}, D1 Loss: {avg_d1_loss:.4f}\n")
+
+        # Call learning rate scheduler after each epoch
+        scheduler_g.step(avg_g1_loss)  # Adjusts G1 learning rate based on its loss
+        scheduler_d.step(avg_d1_loss)  # Adjusts D1 learning rate based on its loss
+
 
     print(f"\n✅ Training Completed in {time.time() - start_time:.2f} seconds.\n")
 
