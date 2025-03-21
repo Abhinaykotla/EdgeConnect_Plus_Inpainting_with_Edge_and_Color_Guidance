@@ -5,6 +5,7 @@ import torch
 import json
 import glob
 import hashlib
+import io
 import matplotlib.pyplot as plt
 from config import config
 
@@ -324,11 +325,18 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d, g1_ema=None):
 
     return 1, float("inf"), {"g1_loss": [], "d1_loss": []}, batch_losses, epoch_losses
 
+
 def calculate_model_hash(model):
     """
     Calculate a hash for the model's state_dict to check for changes.
     """
-    model_bytes = torch.save(model.state_dict(), None)
+    # Use BytesIO to save the model state to memory instead of None
+    buffer = io.BytesIO()
+    torch.save(model.state_dict(), buffer)
+    # Get the bytes from the buffer
+    buffer.seek(0)
+    model_bytes = buffer.getvalue()
+    # Calculate and return the hash
     return hashlib.md5(model_bytes).hexdigest()
 
 def print_model_info(model, model_name="Model"):
