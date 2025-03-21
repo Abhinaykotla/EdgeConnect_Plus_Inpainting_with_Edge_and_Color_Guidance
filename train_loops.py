@@ -118,12 +118,12 @@ def train_g1_and_d1():
     print(f"🔹 Loss Weights → L1: {config.L1_LOSS_WEIGHT}, Adv: {config.ADV_LOSS_WEIGHT}, FM: {config.FM_LOSS_WEIGHT}")
 
     print("🔹 Checking for old checkpoints\n")
-    print("Before loading:", hash(tuple(p.data_ptr() for p in g1.parameters())))
+    print("Model Hash before loading:", calculate_model_hash(g1)) 
 
     # Load checkpoint if available
     start_epoch, best_g1_loss, history, batch_losses, epoch_losses = load_checkpoint(g1, d1, optimizer_g, optimizer_d, g1_ema)
 
-    print("After loading:", hash(tuple(p.data_ptr() for p in g1.parameters())))
+    print("Model Hash after loading:", calculate_model_hash(g1)) 
 
     # Early Stopping Parameters
     patience = config.EARLY_STOP_PATIENCE
@@ -148,7 +148,7 @@ def train_g1_and_d1():
         # Print loss weights
         print(f"🔹 Loss Weights → L1: {config.L1_LOSS_WEIGHT}, Adv: {config.ADV_LOSS_WEIGHT}, FM: {config.FM_LOSS_WEIGHT}")
 
-        ###### 🔹 Training Phase ######
+        ###### 🔹 Training Phase ###### 
         for batch_idx, batch in enumerate(train_dataloader):
             input_edges, gt_edges, mask, gray = (
                 batch["input_edge"].to(config.DEVICE),
@@ -158,7 +158,7 @@ def train_g1_and_d1():
                 )
 
 
-            ###### 🔹 Train Generator (G1) ######
+            ###### 🔹 Train Generator (G1) ###### 
             g1.train()
             optimizer_g.zero_grad()
             with torch.amp.autocast(config.DEVICE):  
@@ -189,7 +189,7 @@ def train_g1_and_d1():
             # Update EMA model after each generator update
             g1_ema.update()
 
-            ###### 🔹 Train Discriminator (D1) ######
+            ###### 🔹 Train Discriminator (D1) ###### 
             optimizer_d.zero_grad()
 
             with torch.amp.autocast(config.DEVICE):  
@@ -287,7 +287,7 @@ def train_g1_and_d1():
             )
             g1_ema.restore()
 
-        ###### 🔹 Validation Phase ######
+        ###### 🔹 Validation Phase ###### 
         if (epoch) % config.VALIDATION_SAMPLE_EPOCHS == 0:
             print(f"\n🔍 Running Validation for Epoch {epoch}...\n")
             g1.eval()
