@@ -4,8 +4,8 @@ import time
 import torch
 from dataloader import get_dataloader_g1
 from g1_model import adversarial_loss, l1_loss, feature_matching_loss, EdgeGenerator, EdgeDiscriminator
+from utils import save_checkpoint, load_checkpoint, save_losses_to_json, plot_losses, save_generated_images, print_model_info, calculate_model_hash
 from config import config
-from utils import save_checkpoint, load_checkpoint, save_losses_to_json, plot_losses, save_generated_images, print_model_info
 
 class EMA:
     """
@@ -98,9 +98,9 @@ def train_g1_and_d1():
         weight_decay=config.WEIGHT_DECAY
     )
 
-    # Define learning rate schedulers
-    scheduler_g = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_g, mode='min', patience=3, factor=0.6, verbose=True)
-    scheduler_d = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer_d, mode='min', patience=3, factor=0.5, verbose=True)
+    # Learning rate scheduler
+    scheduler_g = torch.optim.lr_scheduler.StepLR(optimizer_g, step_size=10, gamma=0.1)
+    scheduler_d = torch.optim.lr_scheduler.StepLR(optimizer_d, step_size=10, gamma=0.1)
 
     # Use Mixed Precision for Faster Training
     scaler = torch.amp.GradScaler(device=config.DEVICE)
@@ -222,6 +222,7 @@ def train_g1_and_d1():
             # Print progress every 100 batches
             if (batch_idx + 1) % config.BATCH_SAMPLING_SIZE == 0:
                 print(f"  🔹 Batch [{batch_idx+1}/{len(train_dataloader)}] - G1 Loss: {loss_g.item():.4f}, D1 Loss: {loss_d.item():.4f}")
+                print(f"  🔹 Current Learning Rate: {scheduler_g.get_last_lr()[0]:.6f}")
 
                 print(f"\n📸 Saving Training Samples for batch {batch_idx+1}...\n")
                 # Apply EMA for sample generation
@@ -231,6 +232,10 @@ def train_g1_and_d1():
                 # Use epoch, not epoch+1 for consistent numbering
                 save_generated_images(epoch, input_edges, mask, gt_edges, gray, pred_edge_ema, mode="train", batch_idx=batch_idx+1)
                 g1_ema.restore()
+
+        # Step the learning rate scheduler
+        scheduler_g.step()
+        scheduler_d.step()
 
         # Compute average loss for the epoch
         avg_g1_loss = total_g_loss / len(train_dataloader)
@@ -258,7 +263,7 @@ def train_g1_and_d1():
             # Apply EMA weights for saving the best model
             g1_ema.apply_shadow()
             # Don't pass the empty batch_losses here
-            save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_g1_loss, history, batch_losses, epoch_losses)
+            save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_g1_loss, history, batch_losses, epoch_losses, g1_ema)
             g1_ema.restore()
             epochs_no_improve = 0  # Reset early stopping counter
         else:
@@ -321,10 +326,9 @@ def train_g1_and_d1():
         epoch_duration = epoch_end_time - epoch_start_time
         print(f"\n🔹 Epoch [{epoch}/{num_epochs}] Completed in {epoch_duration:.2f}s - G1 Loss: {avg_g1_loss:.4f}, D1 Loss: {avg_d1_loss:.4f}\n")
 
-        # Call learning rate scheduler after each epoch
-        scheduler_g.step(avg_g1_loss)  # Adjusts G1 learning rate based on its loss
-        scheduler_d.step(avg_d1_loss)  # Adjusts D1 learning rate based on its loss
-
+        # Calculate and print model hash
+        model_hash = calculate_model_hash(g1)
+        print(f"Model hash after epoch {epoch}: {model_hash}")
 
     print(f"\n✅ Training Completed in {time.time() - start_time:.2f} seconds.\n")
 
