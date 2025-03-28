@@ -8,3 +8,6 @@ __pycache__/
 *.tar
 *.gz
 *.json
+desktop.ini
+*.ini
+*.rar
