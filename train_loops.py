@@ -99,8 +99,8 @@ def train_g1_and_d1():
     )
 
     # Learning rate scheduler
-    scheduler_g = torch.optim.lr_scheduler.StepLR(optimizer_g, step_size=10, gamma=0.1)
-    scheduler_d = torch.optim.lr_scheduler.StepLR(optimizer_d, step_size=10, gamma=0.1)
+    scheduler_g = torch.optim.lr_scheduler.StepLR(optimizer_g, step_size=10, gamma=0.7)
+    scheduler_d = torch.optim.lr_scheduler.StepLR(optimizer_d, step_size=10, gamma=0.7)
 
     # Use Mixed Precision for Faster Training
     scaler = torch.amp.GradScaler(device=config.DEVICE)
