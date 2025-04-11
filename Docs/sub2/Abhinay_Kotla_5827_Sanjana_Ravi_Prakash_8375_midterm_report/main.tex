@@ -1,0 +1,302 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+\usepackage{hyperref}
+
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs} % For better tables
+\usepackage{array}
+
+
+\begin{document}
+
+%%%%%%%%% TITLE
+\title{EdgeConnect+: Adversarial Inpainting with Edge and Color Guidance}
+
+\author{
+University of Texas at Arlington\\
+Abhinay Kotla, Sanjana Ravi Prakash\\
+{\tt\small axk5827@mavs.uta.edu, sxr8375@mavs.uta.edu}
+}
+
+\maketitle
+\thispagestyle{empty}
+
+%%%%%%%%% ABSTRACT
+\begin{abstract}
+We present EdgeConnect+, an enhanced deep learning-based image inpainting model that integrates both structural and chromatic guidance to improve the realism of reconstructed images. Our method builds upon the EdgeConnect framework by incorporating a low-frequency blurred color map in addition to the edge map to enhance contextual and chromatic consistency in missing regions. EdgeConnect+ consists of three stages: (1) an edge generation network (G1) that predicts structural contours, (2) generation of a coarse color map to guide chromatic consistency, and (3) a texture completion network (G2) that performs final image reconstruction using predicted edges and color guidance. We outline the methodology and detail the evaluation metrics that will be used to assess reconstruction performance.
+\end{abstract}
+
+%%%%%%%%% BODY TEXT
+
+\section{Introduction}
+
+Image inpainting is a fundamental task in computer vision aimed at reconstructing missing or corrupted regions in images, ensuring visual realism and structural coherence. Its practical applications include photo restoration, object removal, and creative editing. Traditional techniques, such as diffusion-based and patch-based methods, have limited effectiveness in reconstructing complex structures and large missing areas, often resulting in blurry or incoherent textures.
+
+Recently, deep learning methods, particularly Generative Adversarial Networks (GANs) \cite{goodfellow2014generative}, have significantly advanced inpainting performance by generating plausible content in missing image regions through learned representations from large datasets. Among these, EdgeConnect \cite{nazeri2019edgeconnect} explicitly predicts missing edges to ensure structural coherence before image completion. While effective structurally, EdgeConnect lacks explicit color guidance, frequently leading to noticeable artifacts and unnatural color transitions at the boundaries of reconstructed regions.
+
+To address these limitations, we propose \textbf{EdgeConnect+}, an enhanced inpainting framework that explicitly integrates both edge structure and color information. Our proposed pipeline involves a three-stage process. First, an edge generator predicts missing structural information conditioned on masked image edges, grayscale input, and the binary mask of missing regions. Second, we introduce color guidance via a Gaussian-blurred version of the original image, providing coarse color priors. Recognizing limitations in Gaussian blur's semantic guidance, we are also exploring advanced color propagation methods such as Partial Convolutions \cite{liu2018partial} and Contextual Attention (CA) modules \cite{yu2018generative} to further enhance visual consistency. Finally, a second generative network leverages both the predicted edges and the provided color hints to reconstruct the final realistic inpainted image.
+
+We validate our approach on the CelebA dataset \cite{liu2015deep}, containing diverse facial images with various attributes such as pose, expression, and illumination. Preliminary results indicate improvements in visual realism and coherence compared to existing edge-based inpainting methods.
+
+\section{Related Work}
+
+Early deep learning-based inpainting methods, such as Context Encoders~\cite{pathak2016context}, relied on encoder-decoder architectures with reconstruction and adversarial losses. While effective for coarse structure, they often failed to preserve fine details, especially in large or complex missing regions.
+
+Partial Convolutions~\cite{liu2018partial} and Gated Convolutions~\cite{yu2019free} improved robustness to free-form masks by adapting convolution operations based on mask validity. However, these methods lacked explicit structure guidance, limiting their effectiveness in preserving geometry.
+
+Attention-based approaches, such as DeepFill~\cite{yu2018generative}, introduced contextual attention to propagate textures from known regions, improving visual coherence. CoModGAN~\cite{zhao2021comodgan} advanced this further using feature-wise modulation, enabling stronger conditioning on input context and better global consistency.
+
+To incorporate structural priors, two-stage methods have been proposed, such as EdgeConnect~\cite{nazeri2019edgeconnect}, which first predicts edge structure and then performs image completion. However, it does not explicitly model color consistency, leading to desaturated or artifact-prone outputs.
+
+Our method builds upon this structural guidance paradigm by introducing a color guidance stream that enhances chromatic continuity, resulting in more realistic and perceptually rich reconstructions.
+
+
+\section{Methodology}
+
+Our approach follows a three-stage pipeline designed to integrate edge and color information effectively for realistic image inpainting. The process is divided into the following stages:
+
+\subsection{Edge Generation (G1)} In the first stage, we employ an edge generator (G1) that predicts the missing edges in the occluded regions. The generator is conditioned on the masked image, grayscale image, and binary mask. The predicted edges are essential for ensuring that the structure of the image is consistent with the surrounding context. The generator is trained using adversarial loss, L1 loss, and feature-matching loss to achieve stable convergence and high-quality edge predictions.
+
+\subsection{Color Map Generation} Once the edges are predicted, we move to the second stage, where color guidance is provided to fill in the missing regions. Initially, a Gaussian blur is applied to the unmasked portions of the image to generate a low-frequency color map. This map provides coarse color information, which helps maintain color consistency across the inpainted regions. Additionally, to improve the color propagation, we are exploring advanced techniques like Partial Convolutions \cite{liu2018partial} and Contextual Attention (CA) modules \cite{yu2018generative}, which allow more semantic and context-aware color filling, further improving the realism of the inpainted regions.
+
+\subsection{Final Inpainting (G2 - Planned)} In the third and final stage, a second generative network (G2) completes the image reconstruction. The G2 model takes as input a composite RGB image where the unmasked regions retain the original content, while the masked regions are filled with the predicted edges and the generated color map. Along with the composite image, the binary mask is fed into G2 to indicate the missing regions. The output of this stage is a fully inpainted image that combines both structural and color information to ensure a realistic and visually coherent result.
+
+\section{Dataset}
+
+We evaluate our method on the CelebA dataset~\cite{liu2015deep}, a large-scale face dataset containing over 200,000 celebrity images with diverse facial attributes such as pose, expression, age, and lighting conditions. All images are center-cropped and resized to $256 \times 256$ pixels.
+
+\subsection{Data Preparation}
+
+To simulate realistic inpainting scenarios, we apply irregular binary masks to the images, ensuring each mask covers at least 20\% of the image area. Masked regions are filled with white pixels to create input images for training.
+
+The preprocessing steps are as follows:
+\begin{itemize}
+    \item Binary masks indicating missing areas are derived from white regions.
+    \item Input edges are generated by applying the Canny edge detector to the masked image, subsequently removing edges corresponding to mask regions, thus retaining only edges from visible image areas.
+    \item Grayscale versions of masked images are created as additional input for the edge generation network (G1).
+    \item Ground truth edges are generated by applying the Canny edge detector to the original (unmasked) images, supervising G1 during training.
+\end{itemize}
+
+
+
+\subsection{Dataset Splits}
+
+We split the CelebA dataset as below:
+\begin{itemize}
+    \item \textbf{Training:} 162,079 images
+    \item \textbf{Validation:} 10,129 images
+    \item \textbf{Testing:} 30,391 images
+\end{itemize}
+
+Figures~\ref{fig:gt_image} and \ref{fig:input_image} show samples from the prepared dataset.
+
+\begin{figure}[h!]
+    \centering
+    \begin{minipage}{0.22\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{gt.jpg}
+        \caption{Ground Truth Image}
+        \label{fig:gt_image}
+    \end{minipage}\hfill
+    \begin{minipage}{0.22\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{input.jpg}
+        \caption{Input Image}
+        \label{fig:input_image}
+    \end{minipage}
+\end{figure}
+
+
+
+
+
+\section{Loss Functions}
+
+EdgeConnect+ employs a combination of loss functions during training to ensure structural accuracy, perceptual realism, and texture consistency. These losses are applied across both stages of the pipeline: edge generation (G1) and image completion (G2).
+
+\subsection{L1 Loss (Pixel-wise Reconstruction)}
+L1 loss computes the mean absolute difference between the predicted and ground truth images (or edges). It encourages pixel-wise accuracy and helps maintain structural alignment.
+
+\subsection{Adversarial Loss}
+We use a non-saturating GAN (NS-GAN) objective to train both G1 and G2. This loss encourages the generators to produce outputs indistinguishable from real data, promoting naturalness in edges and textures.
+
+\subsection{Feature Matching Loss}
+Applied in G1, this loss minimizes the difference between discriminator feature activations for real and generated edge maps, promoting training stability and structural realism.
+
+\subsection{Perceptual Loss}
+Perceptual loss is computed using feature activations from a pretrained VGG16 network~\cite{johnson2016perceptual}. It helps G2 preserve high-level content semantics and overall scene consistency.
+
+\subsection{Style Loss}
+Style loss~\cite{gatys2016image} ensures texture coherence by matching the Gram matrices of feature maps between predicted and ground truth images, helping to preserve texture and fine patterns.
+
+\subsection{Gradient Penalty}
+To enforce Lipschitz continuity and improve training stability, we apply a gradient penalty~\cite{gulrajani2017improved} on the discriminator in the edge generation stage.
+
+
+\section{Evaluation Metrics}
+
+To quantitatively evaluate the performance of EdgeConnect+, we plan to report the following widely accepted metrics:
+
+\subsection{PSNR (Peak Signal-to-Noise Ratio)}
+
+PSNR measures the ratio between the maximum possible pixel intensity and the mean squared error between the inpainted and ground truth images. It serves as a basic indicator of pixel-level reconstruction fidelity. Higher PSNR values correspond to lower distortion.
+
+\subsection{SSIM (Structural Similarity Index Measure)}
+
+SSIM~\cite{wang2004image} evaluates structural and perceptual similarity by comparing luminance, contrast, and structure between the predicted and ground truth images. It ranges from $-1$ to $1$, where values closer to $1$ signify higher perceptual similarity.
+
+\subsection{Mean Absolute Error (L1 Loss)}
+
+This metric computes the average of the absolute pixel-wise differences. Since it is one of the training objectives, evaluating it at test time provides consistency with training. Lower values indicate better reconstruction quality.
+
+\subsection{LPIPS (Learned Perceptual Image Patch Similarity)}
+
+LPIPS~\cite{zhang2018unreasonable} compares deep features extracted from pretrained networks to assess perceptual similarity. Unlike PSNR and SSIM, LPIPS aligns more closely with human perception of image quality. Lower values indicate stronger perceptual resemblance to the ground truth.
+
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{|c|p{4cm}|>{\centering\arraybackslash}p{2.0cm}|}
+\hline
+\textbf{Metric} & \textbf{Description} & \textbf{Preferred}\\
+               &                      & \textbf{Direction} \\
+\hline
+PSNR  & Pixel-wise fidelity via signal-to-noise ratio     & Higher \\
+SSIM  & Structural and perceptual similarity              & Closer to 1 \\
+L1 Loss & Mean absolute pixel error                      & Lower \\
+LPIPS & Perceptual similarity via deep features           & Lower \\
+\hline
+\end{tabular}
+\caption{Quantitative metrics for evaluating inpainting quality.}
+\end{table}
+
+\section{Training Setup}
+
+We train EdgeConnect+ using the CelebA dataset with the following configuration:
+
+\begin{itemize}
+    \item \textbf{Batch Size:} 192 datapoints per iteration.
+    \item \textbf{Epochs:} 250 full passes over the training set.
+    \item \textbf{Optimizer:} Adam optimizer with a learning rate of $1 \times 10^{-4}$ and weight decay of $5 \times 10^{-5}$.
+    \item \textbf{Precision:} Mixed precision training is employed to reduce memory footprint and improve computational efficiency.
+    \item \textbf{Stabilization:} Exponential Moving Average (EMA) is applied to smooth generator weights during training.
+    \item \textbf{Early Stopping:} Training halts if validation loss does not improve for 10 consecutive epochs.
+    \item \textbf{Environment:} All experiments are conducted on CUDA-enabled GPUs.
+\end{itemize}
+
+\section{Preliminary Results}
+Figures~\ref{fig:g1_sample1_1} and \ref{fig:g1_sample1_2} show samples of current G1 results from training, and Figure~\ref{fig:loss_trends} shows training loss trends up to epoch 25. The model demonstrates good convergence behavior, producing progressively sharper edge predictions. Training is ongoing, with additional epochs planned. Future stages will evaluate full G2 integration.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\textwidth]{G1_sample1.png}
+\caption{Generated Sample 1}
+\label{fig:g1_sample1_1}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\textwidth]{G1_sample2.png}
+\caption{Generated Sample 2}
+\label{fig:g1_sample1_2}
+\end{figure}
+
+
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\textwidth]{loss_trends.png}
+\caption{Loss Trends}
+\label{fig:loss_trends}
+\end{figure}
+
+
+\section{Conclusion}
+
+This work presents EdgeConnect+, a structure- and color-aware inpainting framework that enhances visual realism by jointly leveraging edge predictions and chromatic guidance. By integrating enhanced low-frequency color priors with structural contours, the model produces inpainted results with improved fidelity, continuity, and perceptual quality.
+
+While promising, training the full pipeline is computationally intensive, which imposes constraints on batch size and training efficiency. Moving forward, we aim to complete G2 training, explore transformer-based attention mechanisms for better global context modeling, and evaluate the model on larger and more diverse datasets such as Places2 to assess generalizability.
+
+
+
+\bibliography{references}
+
+\begin{thebibliography}{10}
+\bibitem{nazeri2019edgeconnect}
+K. Nazeri, E. Ng, T. Joseph, F. Qureshi, and M. Ebrahimi.
+EdgeConnect: Generative image inpainting with adversarial edge learning.
+\textit{arXiv preprint arXiv:1901.00212}, 2019.
+
+\bibitem{liu2015deep}
+Z. Liu, P. Luo, X. Wang, and X. Tang.
+Deep learning face attributes in the wild.
+In \textit{International Conference on Computer Vision (ICCV)}, 2015.
+
+\bibitem{goodfellow2014generative}
+I. Goodfellow, J. Pouget-Abadie, M. Mirza, B. Xu, D. Warde-Farley, S. Ozair, A. Courville, and Y. Bengio.
+Generative adversarial networks.
+\textit{arXiv preprint arXiv:1406.2661}, 2014.
+
+\bibitem{pathak2016context}
+D. Pathak, P. Krahenbuhl, J. Donahue, T. Darrell, and A. A. Efros.
+Context encoders: Feature learning by inpainting.
+In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 2536–2544, 2016.
+
+\bibitem{darabi2012image}
+S. Darabi, E. Shechtman, C. Barnes, D. B. Goldman, and P. Sen.
+Image melding: Combining inconsistent images using patch-based synthesis.
+\textit{ACM Transactions on Graphics (TOG)}, 31(4):82–1, 2012.
+
+\bibitem{liu2018partial}
+G. Liu, F. A. Reda, K. J. Shih, T. C. Wang, A. Tao, and B. Catanzaro.  
+Image inpainting for irregular holes using partial convolutions.  
+\textit{Proceedings of the European Conference on Computer Vision (ECCV)}, pages 85--100, 2018.
+
+\bibitem{yu2019free}
+J. Yu, Z. Lin, J. Yang, X. Shen, X. Lu, and T. S. Huang.  
+Free-form image inpainting with gated convolution.  
+\textit{Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)}, pages 4471--4480, 2019.
+
+\bibitem{yu2018generative}
+J. Yu, Z. Lin, J. Yang, X. Shen, X. Lu, and T. S. Huang.  
+Generative image inpainting with contextual attention.  
+\textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 5505--5514, 2018.
+
+\bibitem{zhao2021comodgan}
+S. Zhao, Z. Liu, Z. Lin, J.-Y. Zhu, and W. Xu.  
+CoModGAN: Co-modulated generative adversarial networks.  
+\textit{Advances in Neural Information Processing Systems (NeurIPS)}, 34:4439--4452, 2021.
+
+\bibitem{johnson2016perceptual}
+J. Johnson, A. Alahi, and L. Fei-Fei.
+Perceptual losses for real-time style transfer and super-resolution.
+In \textit{European Conference on Computer Vision (ECCV)}, pages 694–711. Springer, 2016.
+
+\bibitem{gatys2016image}
+L. A. Gatys, A. S. Ecker, and M. Bethge.
+Image style transfer using convolutional neural networks.
+In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 2414–2423, 2016.
+
+\bibitem{gulrajani2017improved}
+I. Gulrajani, F. Ahmed, M. Arjovsky, V. Dumoulin, and A. Courville.
+Improved training of Wasserstein GANs.
+In \textit{Advances in Neural Information Processing Systems (NeurIPS)}, pages 5767–5777, 2017.
+
+\bibitem{zhang2018unreasonable}
+R. Zhang, P. Isola, A. A. Efros, E. Shechtman, and O. Wang.
+The unreasonable effectiveness of deep features as a perceptual metric.
+In \textit{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}, pages 586–595, 2018.
+
+\bibitem{wang2004image}
+Z. Wang, A. C. Bovik, H. R. Sheikh, and E. P. Simoncelli.
+Image quality assessment: From error visibility to structural similarity.
+\textit{IEEE Transactions on Image Processing}, 13(4):600–612, 2004.
+
+
+\end{thebibliography}
+
+\end{document}
