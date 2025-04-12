@@ -36,7 +36,7 @@ EdgeConnect+ follows a **three-stage inpainting pipeline**:
 ### 🚧 G2: Final Inpainting Network
 
 - In progress.
-- Will use U-Net or encoder-decoder architecture.
+- Will use GAN based architecture.
 - Takes composite RGB input (edges + color map) + binary mask.
 - Training plan includes perceptual, style, and adversarial losses.
 
@@ -46,12 +46,11 @@ EdgeConnect+ follows a **three-stage inpainting pipeline**:
 
 ```
 ├── configs/               # Config files and hyperparameters
-├── data/                  # Preprocessed CelebA images and masks
+├── data_archive/          # Preprocessed images and masks
 ├── models/                # G1, G2, and discriminator implementations
-├── train.py               # Main training loop
+├── train_loops.py         # Main training loop
 ├── utils.py               # Utility functions for preprocessing and evaluation
-├── notebooks/             # Jupyter notebooks for data visualization
-├── results/               # Output samples and loss curves
+├── generated_samples/     # Output samples and loss curves
 └── README.md              # Project overview and updates
 ```
 
@@ -68,7 +67,7 @@ EdgeConnect+ follows a **three-stage inpainting pipeline**:
 
 ## 📊 Visual Results
 
-Example visualizations are available in `results/`, including edge maps, masked inputs, and G1 predictions.
+Example visualizations are available in `generated_samples/`, including edge maps, masked inputs, and G1 predictions.
 
 ---
 
