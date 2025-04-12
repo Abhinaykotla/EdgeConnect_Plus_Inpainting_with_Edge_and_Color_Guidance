@@ -1,5 +1,3 @@
-# utils.py
-
 import os
 import torch
 import json
@@ -241,8 +239,6 @@ def save_generated_images(epoch, input_edges, masks, gt_edges, gray, pred_edges,
         plt.savefig(save_path)
         plt.close(fig)
 
-
-
 # Function to save model and training history
 def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses, g1_ema=None):
     checkpoint = {
@@ -254,7 +250,8 @@ def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history,
         "best_loss": best_loss,
         "history": history,
         "batch_losses": batch_losses,
-        "epoch_losses": epoch_losses
+        "epoch_losses": epoch_losses,
+        "ema_shadow": ema.shadow  # Save EMA shadow parameters
     }
 
     if g1_ema is not None:
