@@ -5,14 +5,13 @@ from PIL import Image
 from torchvision import transforms
 import cv2
 import numpy as np
+
 from g1_model import EdgeGenerator
 from config import config
-from dataloader import apply_canny, remove_mask_egde, get_dataloader_g1
+from dataloader import apply_canny, remove_mask_edge, dilate_mask
 
 def load_specific_checkpoint(model, checkpoint_path):
-    """
-    Load a specific checkpoint for the model.
-    """
+    """Load a specific checkpoint for the model."""
     checkpoint = torch.load(checkpoint_path, map_location=config.DEVICE)
     model.load_state_dict(checkpoint['g1_state_dict'])
     if 'ema_shadow' in checkpoint:
@@ -24,137 +23,87 @@ def load_specific_checkpoint(model, checkpoint_path):
         print("❌ EMA shadow does not exist in the checkpoint.")
     print(f"✅ Loaded checkpoint from {checkpoint_path}")
 
-def plot_and_display_images(input_image, pred_edge):
-    """
-    Plot and display input images and generated edges side by side.
-    """
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+def display_images(input_image, mask, gray_image, pred_edge):
+    """Display all images using matplotlib"""
+    plt.figure(figsize=(15, 5))
 
-    # Plot input image
-    axes[0].imshow(input_image.cpu().squeeze(), cmap='gray')
-    axes[0].set_title('Input Image')
-    axes[0].axis('off')
+    plt.subplot(141)
+    plt.title('Input Image')
+    plt.imshow(cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB))
+    plt.axis('off')
 
-    # Plot generated edge
-    axes[1].imshow(pred_edge.cpu().squeeze(), cmap='gray')
-    axes[1].set_title('Generated Edge')
-    axes[1].axis('off')
+    plt.subplot(142)
+    plt.title('Mask')
+    plt.imshow(mask.cpu().squeeze().numpy(), cmap='gray')
+    plt.axis('off')
 
-    # Display the plot
+    plt.subplot(143)
+    plt.title('Grayscale Image')
+    plt.imshow(gray_image.cpu().squeeze().numpy(), cmap='gray')
+    plt.axis('off')
+
+    plt.subplot(144)
+    plt.title('Generated Edge')
+    plt.imshow(pred_edge.cpu().squeeze().numpy(), cmap='gray')
+    plt.axis('off')
+
+    plt.tight_layout()
     plt.show()
 
-def plot_and_save_images(input_image, pred_edge, output_dir, image_name):
-    """
-    Plot and save input images and generated edges side by side.
-    """
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-
-    # Plot input image
-    axes[0].imshow(input_image.cpu().squeeze(), cmap='gray')
-    axes[0].set_title('Input Image')
-    axes[0].axis('off')
-
-    # Plot generated edge
-    axes[1].imshow(pred_edge.cpu().squeeze(), cmap='gray')
-    axes[1].set_title('Generated Edge')
-    axes[1].axis('off')
-
-    # Save the plot
-    save_path = os.path.join(output_dir, f"plot_{image_name}.png")
-    plt.savefig(save_path)
-    plt.close(fig)
-
 def preprocess_image(image_path):
-    """
-    Preprocess the custom image for the model.
-    """
-    # Load the image
+    """Preprocess the custom image for the model."""
     image = cv2.imread(image_path)
-    
-    # Resize the image
+    if image is None:
+        raise ValueError(f"Could not load image from {image_path}")
+
     image = cv2.resize(image, (config.IMAGE_SIZE, config.IMAGE_SIZE))
-    
-    # Extract mask: Consider pixels as missing if all RGB values > 245
-    mask_binary = np.all(image > 245, axis=-1).astype(np.float32)  # Shape: (H, W)
-    mask = 255 - mask_binary * 255  # Invert mask (0s for missing pixels, 255s for known pixels)
-    mask = torch.from_numpy(mask).unsqueeze(0)  # Shape: (1, H, W)
+    mask_binary = np.all(image > 245, axis=-1).astype(np.float32)
+    raw_mask = 255 - mask_binary * 255
+    dilated_mask_np = dilate_mask(raw_mask)
 
-    # Generate Edge Maps
-    input_edge = apply_canny(image)  # Edges from masked image
-    
-    # Apply mask edge removal
-    input_edge = remove_mask_egde(mask, input_edge)
+    input_edge = apply_canny(image)
+    input_edge = np.where(dilated_mask_np > 0.5, 1.0, input_edge)
 
-    # Convert to Tensor if not already
-    if not isinstance(input_edge, torch.Tensor):
-        input_edge = torch.from_numpy(input_edge).float().unsqueeze(0)  # Shape: (1, H, W)
-    
-    mask = mask / 255.0  # Normalize mask to [0, 1]
+    input_edge = torch.from_numpy(input_edge).float().unsqueeze(0)
+    mask_for_model = 1.0 - dilated_mask_np
+    mask_for_model = torch.from_numpy(mask_for_model).float().unsqueeze(0)
 
-    # Concatenate input_edge and mask along the channel dimension
-    input_combined = torch.cat((input_edge, mask), dim=0)  # Shape: (2, H, W)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    gray = gray.astype(np.float32) / 255.0
+    gray = torch.from_numpy(gray).float().unsqueeze(0)
 
-    return input_combined.unsqueeze(0)  # Add batch dimension
+    return input_edge, mask_for_model, gray, image
 
-def test_custom_image(image_path=None):
-    """
-    Test the EdgeGenerator (G1) model on a custom image or test dataset.
-    """
+def test_custom_image(image_path, save_output_path=None):
+    """Test the EdgeGenerator model on a custom image and optionally save the predicted edge."""
     print("\n🔹 Initializing Model & Loading Checkpoint...\n")
-
-    # Initialize the generator model
     g1 = EdgeGenerator().to(config.DEVICE)
-
-    # Load the specific checkpoint
-    checkpoint_path = os.path.join("/content/drive/MyDrive/edgeconnect/", "checkpoint_epoch_3.pth")
+    checkpoint_path = os.path.join("/content/drive/MyDrive/edgeconnect/models/checkpoints", "checkpoint_epoch_43.pth")
     load_specific_checkpoint(g1, checkpoint_path)
-
-    # Set the model to evaluation mode
     g1.eval()
 
-    if image_path:
-        # Preprocess the custom image
-        input_combined = preprocess_image(image_path).to(config.DEVICE)
+    input_edge, mask, gray, original_image = preprocess_image(image_path)
+    input_edge = input_edge.to(config.DEVICE).unsqueeze(0)
+    mask = mask.to(config.DEVICE).unsqueeze(0)
+    gray = gray.to(config.DEVICE).unsqueeze(0)
 
-        print(f"🔹 Running Inference on Custom Image...\n")
+    print(f"🔹 Running Inference on Custom Image...\n")
+    with torch.no_grad():
+        pred_edge = g1(input_edge, mask, gray)
 
-        with torch.no_grad():
-            # Generate edges using the trained generator model
-            pred_edge = g1(input_combined[:, 0:1, :, :], input_combined[:, 1:2, :, :])
+        display_images(original_image, mask, gray, pred_edge[0])
 
-            # Plot and display the input image and generated edge
-            plot_and_display_images(input_combined[0, 0], pred_edge)
-
-    else:
-        print("🔹 No custom image provided. Using test dataset...\n")
-
-        # Load the test dataset
-        test_dataloader = get_dataloader_g1(split="test", use_mask=True)
-
-        # Directory to save generated images
-        output_dir = os.path.join(config.MODEL_CHECKPOINT_DIR, "test_results")
-        os.makedirs(output_dir, exist_ok=True)
-
-        with torch.no_grad():
-            for batch_idx, batch in enumerate(test_dataloader):
-                input_edges, mask = (
-                    batch["input_edge"].to(config.DEVICE),   
-                    batch["mask"].to(config.DEVICE)
-                )
-
-                # Generate edges using the trained generator model
-                pred_edge = g1(input_edges, mask)
-
-                # Plot and save the input image and generated edge
-                for i in range(input_edges.size(0)):
-                    image_name = f"batch{batch_idx}_img{i}"
-                    plot_and_save_images(input_edges[i], pred_edge[i], output_dir, image_name)
-
-                print(f"  🔹 Batch [{batch_idx+1}/{len(test_dataloader)}] - Plots saved.")
+        # Save the predicted edge
+        if save_output_path:
+            pred_np = pred_edge[0].cpu().squeeze().numpy() * 255
+            pred_np = pred_np.astype(np.uint8)
+            Image.fromarray(pred_np).save(save_output_path)
+            print(f"💾 Saved predicted edge to: {save_output_path}")
 
     print("\n✅ Testing Completed.\n")
 
 if __name__ == '__main__':
-    # Path to the custom image (set to None to use test dataset)
-    custom_image_path = "/content/drive/MyDrive/edgeconnect/data_archive/CelebA/test_input/000007.jpg"  # "/path/to/your/custom_image.jpg" or None
-    test_custom_image(custom_image_path)
+    # Set custom input image path and save path
+    custom_image_path = "/content/drive/MyDrive/edgeconnect/data_archive/CelebA/test_input/000024.jpg"
+    output_image_path = "/content/drive/MyDrive/edgeconnect/results/output_edge_000024.png"
+    test_custom_image(custom_image_path, save_output_path=output_image_path)

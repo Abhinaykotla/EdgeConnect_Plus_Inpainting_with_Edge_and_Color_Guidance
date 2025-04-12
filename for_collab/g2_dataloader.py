@@ -1,98 +1,83 @@
-
+import os
 import cv2
 import numpy as np
-import torch
 import matplotlib.pyplot as plt
 
-def apply_enhanced_blur(image, kernel_size=51, sigma=20, enhance=True, boost_saturation=True, gamma=1.2):
-    blurred = cv2.GaussianBlur(image, (kernel_size, kernel_size), sigma)
-
-    if enhance:
-        lab = cv2.cvtColor(blurred, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
-        clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
-        l = clahe.apply(l)
-        lab = cv2.merge((l, a, b))
-        blurred = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
-    if boost_saturation:
-        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV).astype(np.float32)
-        h, s, v = cv2.split(hsv)
-        s = np.clip(s * 2.0, 0, 255)
-        hsv = cv2.merge((h, s, v)).astype(np.uint8)
-        blurred = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-
-    if gamma != 1.0:
-        inv_gamma = 1.0 / gamma
-        table = np.array([(i / 255.0) ** inv_gamma * 255 for i in np.arange(256)]).astype("uint8")
-        blurred = cv2.LUT(blurred, table)
-
-    return blurred
-
 def extract_mask(image):
-    mask = np.all(image > 245, axis=-1).astype(np.uint8)
-    return mask
+    return np.all(image > 245, axis=-1).astype(np.uint8)  # white = 1, else 0
 
-def combine_blur_with_original(original, blurred, mask, feather_kernel=31, feather_sigma=10):
-    mask = mask.astype(np.float32)
-    feathered_mask = cv2.GaussianBlur(mask, (feather_kernel, feather_kernel), feather_sigma)
-    feathered_mask = feathered_mask[:, :, None]
-    return original * (1 - feathered_mask) + blurred * feathered_mask
+def apply_guided_mask_blur(masked_image, mask):
+    """
+    Removes masked (white) regions and uses TELEA to fill them in.
+    """
+    image = masked_image.copy().astype(np.uint8)
 
-def process_image(masked_img_path, edge_img_path, image_size=256):
-    input_img = cv2.imread(masked_img_path)  # BGR
+    # Dilate mask to eliminate white edge borders
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    expanded_mask = cv2.dilate(mask.astype(np.uint8), kernel, iterations=1)
+
+    # Remove white from image
+    image[expanded_mask == 1] = [0, 0, 0]
+
+    # Inpaint with TELEA
+    mask_8u = (expanded_mask * 255).astype(np.uint8)
+    inpainted = cv2.inpaint(image, mask_8u, 15, cv2.INPAINT_TELEA)
+
+    return inpainted
+
+def generate_color_map(masked_image, mask):
+    return apply_guided_mask_blur(masked_image, mask)
+
+def overlay_edges_only_in_mask(image, edge_map, mask, threshold=30, edge_color=(0, 0, 255)):
+    """
+    Draws thin colored edges (default: blue) only inside masked regions.
+    """
+    edge_binary = (edge_map > threshold).astype(np.uint8)
+    result = image.copy()
+
+    for y in range(edge_binary.shape[0]):
+        for x in range(edge_binary.shape[1]):
+            if mask[y, x] == 1 and edge_binary[y, x] == 0:
+                result[y, x] = edge_color
+    return result
+
+def visualize_color_processing(masked_img_path, edge_img_path, image_size=256):
+    input_img = cv2.imread(masked_img_path)
     edge_img = cv2.imread(edge_img_path, cv2.IMREAD_GRAYSCALE)
 
     input_img = cv2.resize(input_img, (image_size, image_size))
     edge_img = cv2.resize(edge_img, (image_size, image_size))
 
-    input_img = input_img.astype(np.float32) / 255.0
-    edge_img = edge_img.astype(np.float32) / 255.0
+    mask = extract_mask(input_img)
 
-    mask = extract_mask((input_img * 255).astype(np.uint8))
-    blurred = apply_enhanced_blur((input_img * 255).astype(np.uint8))
-    blurred = blurred.astype(np.float32) / 255.0
-    blended_img = combine_blur_with_original(input_img, blurred, mask)
+    # Step 1: Generate color map
+    color_map = generate_color_map(input_img, mask)
 
-    input_tensor = torch.from_numpy(input_img.transpose(2, 0, 1))
-    edge_tensor = torch.from_numpy(edge_img).unsqueeze(0)
-    blur_tensor = torch.from_numpy(blended_img.transpose(2, 0, 1))
-    mask_tensor = torch.from_numpy(mask).unsqueeze(0).float()
+    # Step 2: Inpaint the image
+    inpainted = color_map.copy()  # Already inpainted from previous step
 
-    return {
-        "input_img": input_tensor,
-        "edge": edge_tensor,
-        "blur": blur_tensor,
-        "mask": mask_tensor
-    }
+    # Step 3: Apply blue edges AFTER inpainting
+    final_result = overlay_edges_only_in_mask(inpainted, edge_img, mask, edge_color=(0, 0, 255))
 
-def visualize_image(masked_img_path, edge_img_path):
-    data = process_image(masked_img_path, edge_img_path)
-
-    input_img = data["input_img"].permute(1, 2, 0).numpy()
-    edge_img = data["edge"].squeeze().numpy()
-    blur_img = data["blur"].permute(1, 2, 0).numpy()
-    mask_img = data["mask"].squeeze().numpy()
-
-    input_img = input_img[:, :, ::-1]
-    blur_img = blur_img[:, :, ::-1]
-
-    fig, axs = plt.subplots(1, 4, figsize=(20, 5))
-    axs[0].imshow(input_img)
+    # Plot
+    fig, axs = plt.subplots(1, 5, figsize=(24, 6))
+    axs[0].imshow(cv2.cvtColor(input_img, cv2.COLOR_BGR2RGB))
     axs[0].set_title("Input Masked Image")
     axs[1].imshow(edge_img, cmap="gray")
-    axs[1].set_title("Edge Map from G1")
-    axs[2].imshow(mask_img, cmap="gray")
-    axs[2].set_title("Extracted Mask")
-    axs[3].imshow(blur_img)
-    axs[3].set_title("Strongly Enhanced Color-Guided")
+    axs[1].set_title("Predicted Edge")
+    axs[2].imshow(cv2.cvtColor(color_map, cv2.COLOR_BGR2RGB))
+    axs[2].set_title("Color Map (Inpainted)")
+    axs[3].imshow(cv2.cvtColor(final_result, cv2.COLOR_BGR2RGB))
+    axs[3].set_title("Final Enhanced with Blue Edges")
+    axs[4].imshow(cv2.cvtColor(final_result, cv2.COLOR_BGR2RGB))
+    axs[4].set_title("Post-Inpainted (TELEA + Blue Edges)")
     for ax in axs:
         ax.axis("off")
     plt.tight_layout()
     plt.show()
 
-# Example usage
+# Example usage:
 if __name__ == "__main__":
-    masked_img_path = "/content/drive/MyDrive/edgeconnect/data_archive/CelebA/test_input/000024.jpg"
-    edge_img_path = "/content/drive/MyDrive/edgeconnect/00024.png"
-    visualize_image(masked_img_path, edge_img_path)
+    masked_path = "/content/drive/MyDrive/edgeconnect/data_archive/CelebA/test_input/000007.jpg"
+    edge_path = "/content/drive/MyDrive/edgeconnect/results/edge_output.png"
+    visualize_color_processing(masked_path, edge_path)
