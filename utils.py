@@ -2,6 +2,8 @@ import os
 import torch
 import json
 import glob
+import hashlib
+import io
 import matplotlib.pyplot as plt
 from config import config
 
@@ -238,7 +240,7 @@ def save_generated_images(epoch, input_edges, masks, gt_edges, gray, pred_edges,
         plt.close(fig)
 
 # Function to save model and training history
-def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses, ema):
+def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses, g1_ema=None):
     checkpoint = {
         "epoch": epoch,
         "g1_state_dict": g1.state_dict(),
@@ -252,7 +254,9 @@ def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history,
         "ema_shadow": ema.shadow  # Save EMA shadow parameters
     }
 
-    # Save the checkpoint file
+    if g1_ema is not None:
+        checkpoint["ema_shadow"] = g1_ema.shadow
+
     checkpoint_path = os.path.join(CHECKPOINT_DIR, f"checkpoint_epoch_{epoch}.pth")
     torch.save(checkpoint, checkpoint_path)
     print(f"✅ Checkpoint saved: {checkpoint_path}")
@@ -262,8 +266,8 @@ def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history,
     with open(history_path, "w") as f:
         json.dump({"epochs": history, "batch_losses": batch_losses, "epoch_losses": epoch_losses}, f)
 
-    # Keep only the last 3 best checkpoints
     manage_checkpoints()
+
 
 # Function to keep only the last 3 best checkpoints
 def manage_checkpoints():
@@ -273,13 +277,13 @@ def manage_checkpoints():
         print(f"🗑️ Deleted old checkpoint: {checkpoint_files[0]}")
 
 # Load checkpoint with enhanced data recovery
-def load_checkpoint(g1, d1, optimizer_g, optimizer_d, ema):
+def load_checkpoint(g1, d1, optimizer_g, optimizer_d, g1_ema=None):
     checkpoint_files = sorted(glob.glob(os.path.join(CHECKPOINT_DIR, "checkpoint_epoch_*.pth")), key=os.path.getmtime)
     batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
     epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
-    
-    if (checkpoint_files):
-        latest_checkpoint = checkpoint_files[-1]  # Load most recent checkpoint
+
+    if checkpoint_files:
+        latest_checkpoint = checkpoint_files[-1]
         checkpoint = torch.load(latest_checkpoint, map_location=config.DEVICE, weights_only=False)
         g1.load_state_dict(checkpoint["g1_state_dict"])
         d1.load_state_dict(checkpoint["d1_state_dict"])
@@ -287,22 +291,21 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d, ema):
         optimizer_d.load_state_dict(checkpoint["optimizer_d"])
         best_loss = checkpoint["best_loss"]
         history = checkpoint["history"]
-        
-        # Restore loss tracking if available
+
         if "batch_losses" in checkpoint:
             batch_losses = checkpoint["batch_losses"]
         if "epoch_losses" in checkpoint:
             epoch_losses = checkpoint["epoch_losses"]
-        
-        # Restore EMA shadow parameters
-        if "ema_shadow" in checkpoint:
-            ema.shadow = checkpoint["ema_shadow"]
-            
+
+        if g1_ema is not None and "ema_shadow" in checkpoint:
+            g1_ema.shadow = checkpoint["ema_shadow"]
+            print("✅ EMA weights restored.")
+
         start_epoch = checkpoint["epoch"] + 1
         print(f"🔄 Resuming training from epoch {start_epoch}, Best G1 Loss: {best_loss:.4f}")
         return start_epoch, best_loss, history, batch_losses, epoch_losses
-    
-    # Load from JSON if checkpoint isn't available but JSON history is
+
+    # Fallback to JSON if no checkpoint exists
     json_path = os.path.join(CHECKPOINT_DIR, "training_history.json")
     if os.path.exists(json_path):
         try:
@@ -316,8 +319,22 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d, ema):
                 print("🔄 Loaded loss history from JSON file.")
         except (json.JSONDecodeError, KeyError):
             print("Warning: Could not load history from JSON.")
-    
+
     return 1, float("inf"), {"g1_loss": [], "d1_loss": []}, batch_losses, epoch_losses
+
+
+def calculate_model_hash(model):
+    """
+    Calculate a hash for the model's state_dict to check for changes.
+    """
+    # Use BytesIO to save the model state to memory instead of None
+    buffer = io.BytesIO()
+    torch.save(model.state_dict(), buffer)
+    # Get the bytes from the buffer
+    buffer.seek(0)
+    model_bytes = buffer.getvalue()
+    # Calculate and return the hash
+    return hashlib.md5(model_bytes).hexdigest()
 
 def print_model_info(model, model_name="Model"):
     """
