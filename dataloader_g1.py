@@ -96,6 +96,21 @@ def remove_mask_edge(mask, img):
     
     return result
 
+def extract_mask(input_img):
+    """
+    Extract the binary mask from the input image.
+    
+    Args:
+        input_img (numpy.ndarray): Input image (H, W, C) in RGB format.
+    
+    Returns:
+        numpy.ndarray: Inverted binary mask (H, W) where 0 = missing pixels, 255 = known pixels.
+    """
+    # Consider pixels as missing if all RGB values > 245
+    mask_binary = np.all(input_img > 245, axis=-1).astype(np.float32)  # Shape: (H, W)
+    raw_mask = 255 - mask_binary * 255  # Invert mask (0s for missing pixels, 255s for known pixels)
+    return raw_mask
+
 class EdgeConnectDataset_G1(Dataset):
     def __init__(self, input_dir, gt_dir, image_size=256, use_mask=False):
         """
@@ -126,9 +141,8 @@ class EdgeConnectDataset_G1(Dataset):
         input_img = cv2.imread(input_path)  # Masked Image
         gt_img = cv2.imread(gt_path)        # Ground Truth Image
 
-        # Extract mask: Consider pixels as missing if all RGB values > 245
-        mask_binary = np.all(input_img > 245, axis=-1).astype(np.float32)  # Shape: (H, W)
-        raw_mask = 255 - mask_binary * 255  # Invert mask (0s for missing pixels, 255s for known pixels)
+        # Extract mask using the new function
+        raw_mask = extract_mask(input_img)
 
         # Get dilated mask (in [0,1] range where 1.0 = missing pixels)
         dilated_mask_np = dilate_mask(raw_mask)
@@ -156,8 +170,6 @@ class EdgeConnectDataset_G1(Dataset):
             "gray": gray_img_tensor,      # Shape: (1, H, W)
             "mask": mask_for_model        # Shape: (1, H, W)
         }
-
-
 
 # Initialize DataLoader for G1 with optional mask input
 def get_dataloader_g1(split="train", use_mask=False):
