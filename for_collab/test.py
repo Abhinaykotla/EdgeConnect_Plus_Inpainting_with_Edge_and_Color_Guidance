@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 from g1_model import EdgeGenerator
 from config import config
-from dataloader import apply_canny, remove_mask_egde, get_dataloader_g1
+from dataloader_g1 import apply_canny, remove_mask_egde, get_dataloader_g1
 
 def load_specific_checkpoint(model, checkpoint_path):
     """

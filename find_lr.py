@@ -3,7 +3,7 @@ from config import config
 import torch
 from train_loops import l1_loss
 from models import EdgeGenerator
-from dataloader import get_dataloader_g1
+from dataloader_g1 import get_dataloader_g1
 
 def lr_finder(optimizer, model, dataloader, init_lr=1e-6, final_lr=1e-1, beta=0.98):
     """
