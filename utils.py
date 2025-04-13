@@ -251,9 +251,9 @@ def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history,
         "history": history,
         "batch_losses": batch_losses,
         "epoch_losses": epoch_losses,
-        "ema_shadow": ema.shadow  # Save EMA shadow parameters
     }
 
+    # Save EMA shadow parameters if g1_ema is provided
     if g1_ema is not None:
         checkpoint["ema_shadow"] = g1_ema.shadow
 
