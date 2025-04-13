@@ -2,7 +2,7 @@
 
 import time
 import torch
-from dataloader import get_dataloader_g1
+from dataloader_g1 import get_dataloader_g1
 from g1_model import adversarial_loss, l1_loss, feature_matching_loss, EdgeGenerator, EdgeDiscriminator
 from utils import save_checkpoint, load_checkpoint, save_losses_to_json, plot_losses, save_generated_images, print_model_info, calculate_model_hash
 from config import config
