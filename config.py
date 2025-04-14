@@ -21,7 +21,7 @@ class Config:
         self.VAL_IMAGES_INPUT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/val_input"))
 
         # Training Hyperparameters
-        self.BATCH_SIZE = 12       # Number of images processed in each training iteration
+        self.BATCH_SIZE = 36       # Number of images processed in each training iteration
         self.NUM_WORKERS = 6       # Number of parallel data loading workers
         self.PIN_MEMORY = True     # Speeds up CPU to GPU memory transfer when enabled
         self.EPOCHS = 100          # Maximum number of complete passes through the training dataset
