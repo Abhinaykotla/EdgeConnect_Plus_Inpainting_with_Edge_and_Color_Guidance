@@ -91,3 +91,15 @@ def remove_mask_edge(mask, img):
     result = np.where(dilated_mask > 0.5, 1.0, img_np)
     
     return result
+
+def gen_raw_mask(input_img):
+    # Extract mask: Consider pixels as missing if all RGB values > 245
+    mask_binary = np.all(input_img > 245, axis=-1).astype(np.float32)  # Shape: (H, W)
+    raw_mask = 255 - mask_binary * 255  # Invert mask (0s for missing pixels, 255s for known pixels)
+    return raw_mask  # Shape: (H, W)
+
+def gen_edge_map(input_img):
+    pass
+
+def gen_gidance_img(input_img, guidance_img):
+    pass

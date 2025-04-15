@@ -7,6 +7,15 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from config import config
+from utils_dl import apply_canny, dilate_mask, gen_raw_mask, gen_edge_map, gen_gidance_img
+
+def gen_edge_map(input_img):
+    pass
+
+def gen_gidance_img(input_img, guidance_img):
+    pass
+
+
 
 class EdgeConnectDataset_G2(Dataset):
     def __init__(self, input_dir, guidance_dir, gt_dir, image_size=256):

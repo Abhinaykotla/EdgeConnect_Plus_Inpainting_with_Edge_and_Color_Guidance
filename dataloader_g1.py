@@ -7,7 +7,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 from config import config
-from utils_dl import apply_canny, dilate_mask, remove_mask_edge
+from utils_dl import apply_canny, dilate_mask, gen_raw_mask
 
 
 class EdgeConnectDataset_G1(Dataset):
@@ -40,9 +40,7 @@ class EdgeConnectDataset_G1(Dataset):
         input_img = cv2.imread(input_path)  # Masked Image
         gt_img = cv2.imread(gt_path)        # Ground Truth Image
 
-        # Extract mask: Consider pixels as missing if all RGB values > 245
-        mask_binary = np.all(input_img > 245, axis=-1).astype(np.float32)  # Shape: (H, W)
-        raw_mask = 255 - mask_binary * 255  # Invert mask (0s for missing pixels, 255s for known pixels)
+        raw_mask = gen_raw_mask(input_img)  # Generate raw mask from input image
 
         # Get dilated mask (in [0,1] range where 1.0 = missing pixels)
         dilated_mask_np = dilate_mask(raw_mask)
