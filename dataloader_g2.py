@@ -15,7 +15,8 @@ def gen_edge_map(input_img):
 def gen_gidance_img(input_img, guidance_img):
     pass
 
-
+def check_edge_map(input_img, edge_map):
+    pass
 
 class EdgeConnectDataset_G2(Dataset):
     def __init__(self, input_dir, guidance_dir, gt_dir, image_size=256):
