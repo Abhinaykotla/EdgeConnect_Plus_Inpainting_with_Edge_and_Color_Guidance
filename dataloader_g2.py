@@ -7,8 +7,7 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from config import config
-from dataloader_g1 import get_dataloader_g1
-from utils_dl import apply_canny, dilate_mask, gen_raw_mask, validate_guidance_images
+from utils_dl import dilate_mask, gen_raw_mask, validate_guidance_images
 from functools import lru_cache
 from pathlib import Path
 

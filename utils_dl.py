@@ -3,8 +3,6 @@ import cv2
 import torch
 import numpy as np
 from config import config
-from dataloader_g1 import get_dataloader_g1
-from utils_dl import dilate_mask, validate_edge_map
 from pathlib import Path
 
 
@@ -234,11 +232,10 @@ def _clear_folder(folder_path):
 def _generate_edge_maps(split="train", batch_size=32):
     """
     Generates edge maps for all input images in batches and saves them in the edge folder.
-
-    Args:
-        split (str): Dataset split to use ('train', 'test', or 'val').
-        batch_size (int): Number of images to process in a single batch.
     """
+    # Import here instead of at the top level
+    from dataloader_g1 import get_dataloader_g1
+    
     # Select input and edge directories based on the split
     if split == "train":
         edge_dir = config.TRAIN_EDGE_DIR
@@ -362,5 +359,5 @@ def _generate_guidance_images(split="train"):
         # Save the guidance image
         cv2.imwrite(guidance_path, guidance_img)
     
-    print(f"Generated guidance images in {guidance_dir}")
+    print(f"Generated guidance images in {guidance_dir}.")
 
