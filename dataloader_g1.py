@@ -12,22 +12,26 @@ from pathlib import Path
 
 
 class EdgeConnectDataset_G1(Dataset):
-    def __init__(self, input_dir, gt_dir=None, image_size=256, use_mask=False, use_gt=True):
+    def __init__(self, input_dir, edge_dir, gt_dir=None, image_size=256, use_mask=True, use_gt=True, return_filenames=False):
         """
         Dataset loader for EdgeConnect+ G1 (Edge Generator).
 
         Args:
             input_dir (str): Path to masked images.
+            edge_dir (str): Path to edge images.
             gt_dir (str, optional): Path to ground truth images. Defaults to None.
             image_size (int): Size of images.
             use_mask (bool): Whether to include the mask as input.
             use_gt (bool): Whether to include ground truth-related processing. Defaults to True.
+            return_filenames (bool): Whether to return filenames in the dataset. Defaults to False.
         """
         self.input_dir = input_dir
+        self.edge_dir = edge_dir
         self.gt_dir = gt_dir
         self.image_size = image_size
         self.use_mask = use_mask
         self.use_gt = use_gt
+        self.return_filenames = return_filenames
         
         # Convert to Path objects for more efficient file operations
         input_path = Path(input_dir)
@@ -85,19 +89,24 @@ class EdgeConnectDataset_G1(Dataset):
             gt_edge = apply_canny(gt_img)  # Edges from ground truth image
             result["gt_edge"] = torch.from_numpy(gt_edge).float().unsqueeze(0)  # Shape: (1, H, W)
 
+        # If return_filenames is enabled, add filenames to the result
+        if self.return_filenames:
+            result["filenames"] = self.input_files[idx]
+
         return result
 
 
-def get_dataloader_g1(split="train", use_mask=False, use_gt=True, batch_size=None, shuffle=True):
+def get_dataloader_g1(split="train", batch_size=config.BATCH_SIZE, shuffle=True, use_mask=True, use_gt=True, return_filenames=False):
     """
     Initializes the DataLoader for EdgeConnect+ G1 (Edge Generator).
 
     Args:
         split (str): Dataset split to use ('train', 'test', or 'val').
-        use_mask (bool): Whether to include the mask as input.
-        use_gt (bool): Whether to include ground truth-related processing.
         batch_size (int, optional): Batch size for the dataloader. Defaults to config value.
         shuffle (bool): Whether to shuffle the data. Defaults to True.
+        use_mask (bool): Whether to include the mask as input.
+        use_gt (bool): Whether to include ground truth-related processing.
+        return_filenames (bool): Whether to return filenames in the dataset. Defaults to False.
 
     Returns:
         DataLoader: A PyTorch DataLoader for the specified dataset split.
@@ -113,16 +122,18 @@ def get_dataloader_g1(split="train", use_mask=False, use_gt=True, batch_size=Non
     
     input_path, gt_path = dataset_paths[split]
     dataset = EdgeConnectDataset_G1(
-        input_path, 
-        gt_path if use_gt else None, 
-        config.IMAGE_SIZE, 
-        use_mask, 
-        use_gt
+        input_dir=input_path,
+        edge_dir=None,  # Edge directory is not used in this implementation
+        gt_dir=gt_path if use_gt else None,
+        image_size=config.IMAGE_SIZE,
+        use_mask=use_mask,
+        use_gt=use_gt,
+        return_filenames=return_filenames  # Pass the new parameter
     )
     
     return DataLoader(
         dataset, 
-        batch_size=batch_size or config.BATCH_SIZE, 
+        batch_size=batch_size, 
         shuffle=shuffle, 
         num_workers=config.NUM_WORKERS, 
         pin_memory=config.PIN_MEMORY, 
