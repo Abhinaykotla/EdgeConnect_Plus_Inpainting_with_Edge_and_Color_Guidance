@@ -5,9 +5,10 @@ import cv2
 import torch
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
-import torch.nn as nn
 from config import config
 from utils_dl import apply_canny, dilate_mask, gen_raw_mask
+from functools import lru_cache
+from pathlib import Path
 
 
 class EdgeConnectDataset_G1(Dataset):
@@ -27,18 +28,28 @@ class EdgeConnectDataset_G1(Dataset):
         self.image_size = image_size
         self.use_mask = use_mask
         self.use_gt = use_gt
-
-        self.input_files = sorted([f.name for f in os.scandir(input_dir) if f.name.endswith('.jpg')])
+        
+        # Convert to Path objects for more efficient file operations
+        input_path = Path(input_dir)
+        self.input_files = sorted([f.name for f in input_path.glob("*.jpg")])
+        
         if self.use_gt and gt_dir:
-            self.gt_files = sorted([f.name for f in os.scandir(gt_dir) if f.name.endswith('.jpg')])
+            gt_path = Path(gt_dir)
+            self.gt_files = sorted([f.name for f in gt_path.glob("*.jpg")])
             assert len(self.input_files) == len(self.gt_files), "Mismatch in number of input and GT images."
 
     def __len__(self):
         return len(self.input_files)
+    
+    @staticmethod
+    @lru_cache(maxsize=32)  # Cache recently processed images
+    def _process_image(img_path):
+        """Process and cache image loading to avoid redundant operations"""
+        return cv2.imread(img_path)
 
     def __getitem__(self, idx):
         input_path = os.path.join(self.input_dir, self.input_files[idx])
-        input_img = cv2.imread(input_path)  # Masked Image
+        input_img = self._process_image(input_path)  # Masked Image
 
         # Generate raw mask from input image
         raw_mask = gen_raw_mask(input_img)
@@ -53,37 +64,31 @@ class EdgeConnectDataset_G1(Dataset):
         # Convert Grayscale Image from input_img
         gray_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2GRAY)
         gray_img = gray_img.astype(np.float32) / 255.0  # Normalize to [0, 1]
+
+        # Convert to Tensors - use a single operation to convert to Float32 and add dimension
         gray_img_tensor = torch.from_numpy(gray_img).float().unsqueeze(0)  # Shape: (1, H, W)
-
-        # Convert to Tensors
-        input_edge = torch.from_numpy(input_edge).float().unsqueeze(0)  # Shape: (1, H, W)
+        input_edge_tensor = torch.from_numpy(input_edge).float().unsqueeze(0)  # Shape: (1, H, W)
         mask_for_model = 1.0 - dilated_mask_np
-        mask_for_model = torch.from_numpy(mask_for_model).float().unsqueeze(0)  # Shape: (1, H, W)
+        mask_tensor = torch.from_numpy(mask_for_model).float().unsqueeze(0)  # Shape: (1, H, W)
 
-        # If GT is enabled, process GT-related data
-        if self.use_gt and self.gt_dir:
-            gt_path = os.path.join(self.gt_dir, self.gt_files[idx])
-            gt_img = cv2.imread(gt_path)  # Ground Truth Image
-            gt_edge = apply_canny(gt_img)  # Edges from ground truth image
-            gt_edge = torch.from_numpy(gt_edge).float().unsqueeze(0)  # Shape: (1, H, W)
-
-            return {
-                "input_edge": input_edge,  # Shape: (1, H, W)
-                "gray": gray_img_tensor,  # Shape: (1, H, W)
-                "mask": mask_for_model,   # Shape: (1, H, W)
-                "gt_edge": gt_edge        # Shape: (1, H, W)
-            }
-
-        # If GT is disabled, return only the required tensors
-        return {
-            "input_edge": input_edge,  # Shape: (1, H, W)
-            "gray": gray_img_tensor,  # Shape: (1, H, W)
-            "mask": mask_for_model    # Shape: (1, H, W)
+        # Common elements for both return paths
+        result = {
+            "input_edge": input_edge_tensor,  # Shape: (1, H, W)
+            "gray": gray_img_tensor,          # Shape: (1, H, W)
+            "mask": mask_tensor               # Shape: (1, H, W)
         }
 
+        # If GT is enabled, add GT-related data
+        if self.use_gt and self.gt_dir:
+            gt_path = os.path.join(self.gt_dir, self.gt_files[idx])
+            gt_img = self._process_image(gt_path)  # Ground Truth Image
+            gt_edge = apply_canny(gt_img)  # Edges from ground truth image
+            result["gt_edge"] = torch.from_numpy(gt_edge).float().unsqueeze(0)  # Shape: (1, H, W)
 
-# Initialize DataLoader for G1 with optional mask input
-def get_dataloader_g1(split="train", use_mask=False, use_gt=True):
+        return result
+
+
+def get_dataloader_g1(split="train", use_mask=False, use_gt=True, batch_size=None, shuffle=True):
     """
     Initializes the DataLoader for EdgeConnect+ G1 (Edge Generator).
 
@@ -91,6 +96,8 @@ def get_dataloader_g1(split="train", use_mask=False, use_gt=True):
         split (str): Dataset split to use ('train', 'test', or 'val').
         use_mask (bool): Whether to include the mask as input.
         use_gt (bool): Whether to include ground truth-related processing.
+        batch_size (int, optional): Batch size for the dataloader. Defaults to config value.
+        shuffle (bool): Whether to shuffle the data. Defaults to True.
 
     Returns:
         DataLoader: A PyTorch DataLoader for the specified dataset split.
@@ -100,16 +107,24 @@ def get_dataloader_g1(split="train", use_mask=False, use_gt=True):
         "test": (config.TEST_IMAGES_INPUT, config.TEST_IMAGES_GT),
         "val": (config.VAL_IMAGES_INPUT, config.VAL_IMAGES_GT)
     }
+    
     if split not in dataset_paths:
         raise ValueError("Invalid dataset split. Choose from 'train', 'test', or 'val'.")
     
     input_path, gt_path = dataset_paths[split]
-    dataset = EdgeConnectDataset_G1(input_path, gt_path if use_gt else None, config.IMAGE_SIZE, use_mask, use_gt)
-    return DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS, pin_memory=config.PIN_MEMORY, prefetch_factor=2)
-
-# if __name__ == "__main__":
-#     # Test DataLoader
-#     dataloader = get_dataloader_g1(split="val", use_mask=True)
-#     for batch in dataloader:
-#         print(batch["input_edge"].shape, batch["gt_edge"].shape, batch["mask"].shape, batch["gray"].shape)
-#         break
+    dataset = EdgeConnectDataset_G1(
+        input_path, 
+        gt_path if use_gt else None, 
+        config.IMAGE_SIZE, 
+        use_mask, 
+        use_gt
+    )
+    
+    return DataLoader(
+        dataset, 
+        batch_size=batch_size or config.BATCH_SIZE, 
+        shuffle=shuffle, 
+        num_workers=config.NUM_WORKERS, 
+        pin_memory=config.PIN_MEMORY, 
+        prefetch_factor=2
+    )
