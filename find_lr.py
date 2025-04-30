@@ -89,5 +89,5 @@ if __name__ == "__main__":
     plt.savefig("lr_finder_plot.png")
 
     # Set Learning Rate Based on Best Loss
-    config.LEARNING_RATE = 0.1 * 10 ** log_lrs[losses.index(min(losses))]
-    print(f"✅ Best Learning Rate Selected: {config.LEARNING_RATE:.6f}")
+    config.LEARNING_RATE_G1 = 0.1 * 10 ** log_lrs[losses.index(min(losses))]
+    print(f"✅ Best Learning Rate Selected: {config.LEARNING_RATE_G1:.6f}")

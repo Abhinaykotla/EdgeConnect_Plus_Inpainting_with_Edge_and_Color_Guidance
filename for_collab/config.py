@@ -46,14 +46,14 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Automatically use GPU if available
         
         # Output directories for model artifacts
-        self.MODEL_CHECKPOINT_DIR = os.path.join(base_drive_dir, "models/checkpoints")  # For saved model states
-        self.EPOCH_SAMPLES_DIR = os.path.join(base_drive_dir, "models/generated_samples/epochs")  # For epoch-based samples
-        self.BATCH_SAMPLES_DIR = os.path.join(base_drive_dir, "models/generated_samples/batch")  # For batch-based samples
-        self.LOSS_PLOT_DIR = os.path.join(base_drive_dir, "models/plots")  # For loss visualizations
+        self.MODEL_CHECKPOINT_DIR_G1 = os.path.join(base_drive_dir, "models/checkpoints")  # For saved model states
+        self.EPOCH_SAMPLES_DIR_G1 = os.path.join(base_drive_dir, "models/generated_samples/epochs")  # For epoch-based samples
+        self.BATCH_SAMPLES_DIR_G1 = os.path.join(base_drive_dir, "models/generated_samples/batch")  # For batch-based samples
+        self.LOSS_PLOT_DIR_G1 = os.path.join(base_drive_dir, "models/plots")  # For loss visualizations
 
         # Optimizer Parameters
-        self.LEARNING_RATE = 0.0001       # Base learning rate for Adam optimizer
-        self.D2G_LR_RATIO = 0.1           # Ratio between discriminator and generator learning rates
+        self.LEARNING_RATE_G1 = 0.0001       # Base learning rate for Adam optimizer
+        self.D2G_LR_RATIO_G1 = 0.1           # Ratio between discriminator and generator learning rates
         self.BETA1 = 0.0                  # Adam optimizer beta1 parameter (momentum)
         self.BETA2 = 0.9                  # Adam optimizer beta2 parameter (RMSprop)
         self.WEIGHT_DECAY = 0.00005        # L2 regularization strength in Adam
@@ -74,16 +74,6 @@ class Config:
         self.ADV_LOSS_TYPE = "lsgan"      # Adversarial loss type (least squares GAN)
         self.GAN_POOL_SIZE = 0            # Size of discriminator image buffer (0 = no buffer)
 
-        # Edge Detection Parameters
-        self.EDGE_THRESHOLD = 0.5         # Threshold for edge map binarization
-        self.SIGMA = 2                    # Gaussian blur sigma for edge smoothing
-
-        # Training Control Parameters
-        self.MAX_ITERS = 2000000          # Maximum number of iterations (backup to epoch limit)
-        self.SEED = 42                    # Random seed for reproducibility
-        self.GPU_IDS = [0]                # GPU device IDs to use (for multi-GPU setups)
-        self.DEBUG = 0                    # Debug level (0 = off, higher = more verbose)
-        self.VERBOSE = 1                  # Verbosity level of output (0 = minimal, 1 = normal)
 
 # Initialize Config
 config = Config()

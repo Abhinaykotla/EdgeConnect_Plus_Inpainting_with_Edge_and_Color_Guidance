@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from config import config
 
 # Directory for saving checkpoints
-CHECKPOINT_DIR = config.MODEL_CHECKPOINT_DIR
+CHECKPOINT_DIR = config.MODEL_CHECKPOINT_DIR_G1
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
 # Function to save loss data to JSON files
@@ -181,10 +181,10 @@ def save_generated_images(epoch, input_edges, masks, gt_edges, gray, pred_edges,
     # Set up save directory
     if batch_idx is not None:
         batch_idx = batch_idx + 1  
-        base_dir = os.path.join(config.BATCH_SAMPLES_DIR, f"epoch_{epoch}")
+        base_dir = os.path.join(config.BATCH_SAMPLES_DIR_G1, f"epoch_{epoch}")
         save_dir = os.path.join(base_dir, mode)
     else:
-        save_dir = save_dir or os.path.join(config.EPOCH_SAMPLES_DIR, mode)
+        save_dir = save_dir or os.path.join(config.EPOCH_SAMPLES_DIR_G1, mode)
     
     os.makedirs(save_dir, exist_ok=True)  
     batch_size = input_edges.shape[0]
@@ -241,33 +241,51 @@ def save_generated_images(epoch, input_edges, masks, gt_edges, gray, pred_edges,
 
 # Function to save model and training history
 def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses, g1_ema=None):
+    """
+    Saves the model, optimizers, and training history as a checkpoint.
+
+    Args:
+        epoch (int): Current epoch number.
+        g1 (torch.nn.Module): Generator model.
+        d1 (torch.nn.Module): Discriminator model.
+        optimizer_g (torch.optim.Optimizer): Optimizer for the generator.
+        optimizer_d (torch.optim.Optimizer): Optimizer for the discriminator.
+        best_loss (float): Best loss value achieved so far.
+        history (dict): Training history.
+        batch_losses (dict): Batch-wise loss history.
+        epoch_losses (dict): Epoch-wise loss history.
+        g1_ema (ExponentialMovingAverage, optional): EMA model for the generator.
+    """
     checkpoint = {
         "epoch": epoch,
-        "g1_state_dict": g1.state_dict(),
-        "d1_state_dict": d1.state_dict(),
-        "optimizer_g": optimizer_g.state_dict(),
-        "optimizer_d": optimizer_d.state_dict(),
-        "best_loss": best_loss,
-        "history": history,
-        "batch_losses": batch_losses,
-        "epoch_losses": epoch_losses,
+        "g1_state_dict": g1.state_dict(),  # Save generator weights
+        "d1_state_dict": d1.state_dict(),  # Save discriminator weights
+        "optimizer_g": optimizer_g.state_dict(),  # Save generator optimizer state
+        "optimizer_d": optimizer_d.state_dict(),  # Save discriminator optimizer state
+        "best_loss": best_loss,  # Save the best loss value
+        "history": history,  # Save training history
+        "batch_losses": batch_losses,  # Save batch-wise losses
+        "epoch_losses": epoch_losses,  # Save epoch-wise losses
     }
 
     # Save EMA shadow parameters if g1_ema is provided
     if g1_ema is not None:
         checkpoint["ema_shadow"] = g1_ema.shadow
 
+    # Define the checkpoint path
     checkpoint_path = os.path.join(CHECKPOINT_DIR, f"checkpoint_epoch_{epoch}.pth")
+
+    # Save the checkpoint
     torch.save(checkpoint, checkpoint_path)
     print(f"✅ Checkpoint saved: {checkpoint_path}")
 
-    # Save training history separately
+    # Save training history separately for easier access
     history_path = os.path.join(CHECKPOINT_DIR, "training_history.json")
     with open(history_path, "w") as f:
         json.dump({"epochs": history, "batch_losses": batch_losses, "epoch_losses": epoch_losses}, f)
 
+    # Manage old checkpoints (keep only the last 3)
     manage_checkpoints()
-
 
 # Function to keep only the last 3 best checkpoints
 def manage_checkpoints():
