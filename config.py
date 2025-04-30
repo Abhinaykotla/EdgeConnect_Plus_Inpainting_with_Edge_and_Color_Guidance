@@ -4,6 +4,9 @@ import os
 
 class Config:
     def __init__(self):
+        # System Settings
+        self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Automatically use GPU if available
+
         # Base directory where this script is located (for relative path resolution)
         base_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -11,6 +14,8 @@ class Config:
         # Training data: ground truth (complete) images and input (masked) images
         self.TRAIN_IMAGES_GT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/train_gt"))
         self.TRAIN_IMAGES_INPUT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/train_input"))
+        self.G1_EDGE_DIR = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/edge_maps"))  # Directory for G1 edge maps
+        self.G2_GUIDANCE_DIR = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/guidance"))  # Directory for G2 guidance images
 
         # Testing data: used for final model evaluation
         self.TEST_IMAGES_GT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/test_gt"))
@@ -21,7 +26,7 @@ class Config:
         self.VAL_IMAGES_INPUT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/val_input"))
 
         # Training Hyperparameters
-        self.BATCH_SIZE = 36       # Number of images processed in each training iteration
+        self.BATCH_SIZE = 30       # Number of images processed in each training iteration
         self.NUM_WORKERS = 6       # Number of parallel data loading workers
         self.PIN_MEMORY = True     # Speeds up CPU to GPU memory transfer when enabled
         self.EPOCHS = 100          # Maximum number of complete passes through the training dataset
@@ -40,19 +45,16 @@ class Config:
         # - Choose BATCH_SAMPLING_SIZE as a divisor of total_batches
         #   (e.g., values like 13506/2, 13506/3, or 13506/4)
         # This ensures consistent sampling across the entire dataset
-
-        # System Settings
-        self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Automatically use GPU if available
         
         # Output directories for model artifacts
-        self.MODEL_CHECKPOINT_DIR = os.path.abspath(os.path.join(base_dir, "models/checkpoints"))  # Saved model states
-        self.EPOCH_SAMPLES_DIR = os.path.abspath(os.path.join(base_dir, "models/generated_samples/epochs"))  # End-of-epoch samples
-        self.BATCH_SAMPLES_DIR = os.path.abspath(os.path.join(base_dir, "models/generated_samples/batch"))    # Mid-epoch samples
-        self.LOSS_PLOT_DIR = os.path.abspath(os.path.join(base_dir, "models/plots"))  # Loss visualization charts
+        self.MODEL_CHECKPOINT_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/checkpoints"))  # Saved model states
+        self.EPOCH_SAMPLES_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/generated_samples/epochs"))  # End-of-epoch samples
+        self.BATCH_SAMPLES_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/generated_samples/batch"))    # Mid-epoch samples
+        self.LOSS_PLOT_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/plots"))  # Loss visualization charts
 
         # Optimizer Parameters
-        self.LEARNING_RATE = 0.0001       # Base learning rate for Adam optimizer
-        self.D2G_LR_RATIO = 0.02           # Ratio between discriminator and generator learning rates
+        self.LEARNING_RATE_G1 = 0.0001       # Base learning rate for Adam optimizer
+        self.D2G_LR_RATIO_G1 = 0.02           # Ratio between discriminator and generator learning rates
         self.BETA1 = 0.0                  # Adam optimizer beta1 parameter (momentum)
         self.BETA2 = 0.9                  # Adam optimizer beta2 parameter (RMSprop)
         self.WEIGHT_DECAY = 0.00005        # L2 regularization strength in Adam
@@ -84,5 +86,8 @@ class Config:
         self.DEBUG = 0                     # Debug level (0 = off, higher = more verbose)
         self.VERBOSE = True                   # Verbosity level of training output
 
+        # G2 ralated settings
+        self.G1_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "models/G1/checkpoints/best_edgeconnect_g1.pth"))  # Path to best G1 model checkpoint
+        
 # Initialize Config
 config = Config()
