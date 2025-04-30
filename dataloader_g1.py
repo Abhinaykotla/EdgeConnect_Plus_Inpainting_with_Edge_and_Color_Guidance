@@ -11,36 +11,37 @@ from utils_dl import apply_canny, dilate_mask, gen_raw_mask
 
 
 class EdgeConnectDataset_G1(Dataset):
-    def __init__(self, input_dir, gt_dir, image_size=256, use_mask=False):
+    def __init__(self, input_dir, gt_dir=None, image_size=256, use_mask=False, use_gt=True):
         """
         Dataset loader for EdgeConnect+ G1 (Edge Generator).
-        
+
         Args:
             input_dir (str): Path to masked images.
-            gt_dir (str): Path to ground truth images.
+            gt_dir (str, optional): Path to ground truth images. Defaults to None.
             image_size (int): Size of images.
             use_mask (bool): Whether to include the mask as input.
+            use_gt (bool): Whether to include ground truth-related processing. Defaults to True.
         """
         self.input_dir = input_dir
         self.gt_dir = gt_dir
         self.image_size = image_size
         self.use_mask = use_mask
+        self.use_gt = use_gt
 
         self.input_files = sorted([f.name for f in os.scandir(input_dir) if f.name.endswith('.jpg')])
-        self.gt_files = sorted([f.name for f in os.scandir(gt_dir) if f.name.endswith('.jpg')])
-        
+        if self.use_gt and gt_dir:
+            self.gt_files = sorted([f.name for f in os.scandir(gt_dir) if f.name.endswith('.jpg')])
+            assert len(self.input_files) == len(self.gt_files), "Mismatch in number of input and GT images."
+
     def __len__(self):
         return len(self.input_files)
 
     def __getitem__(self, idx):
         input_path = os.path.join(self.input_dir, self.input_files[idx])
-        gt_path = os.path.join(self.gt_dir, self.gt_files[idx])
-
-        # Load Images
         input_img = cv2.imread(input_path)  # Masked Image
-        gt_img = cv2.imread(gt_path)        # Ground Truth Image
 
-        raw_mask = gen_raw_mask(input_img)  # Generate raw mask from input image
+        # Generate raw mask from input image
+        raw_mask = gen_raw_mask(input_img)
 
         # Get dilated mask (in [0,1] range where 1.0 = missing pixels)
         dilated_mask_np = dilate_mask(raw_mask)
@@ -48,7 +49,6 @@ class EdgeConnectDataset_G1(Dataset):
         # Generate Edge Maps
         input_edge = apply_canny(input_img)  # Edges from masked image
         input_edge = np.where(dilated_mask_np > 0.5, 1.0, input_edge)  # Remove edge at masked regions
-        gt_edge = apply_canny(gt_img)  # Edges from ground truth image
 
         # Convert Grayscale Image from input_img
         gray_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2GRAY)
@@ -57,22 +57,44 @@ class EdgeConnectDataset_G1(Dataset):
 
         # Convert to Tensors
         input_edge = torch.from_numpy(input_edge).float().unsqueeze(0)  # Shape: (1, H, W)
-        gt_edge = torch.from_numpy(gt_edge).float().unsqueeze(0)        # Shape: (1, H, W)
         mask_for_model = 1.0 - dilated_mask_np
         mask_for_model = torch.from_numpy(mask_for_model).float().unsqueeze(0)  # Shape: (1, H, W)
 
-        # Return all components
+        # If GT is enabled, process GT-related data
+        if self.use_gt and self.gt_dir:
+            gt_path = os.path.join(self.gt_dir, self.gt_files[idx])
+            gt_img = cv2.imread(gt_path)  # Ground Truth Image
+            gt_edge = apply_canny(gt_img)  # Edges from ground truth image
+            gt_edge = torch.from_numpy(gt_edge).float().unsqueeze(0)  # Shape: (1, H, W)
+
+            return {
+                "input_edge": input_edge,  # Shape: (1, H, W)
+                "gray": gray_img_tensor,  # Shape: (1, H, W)
+                "mask": mask_for_model,   # Shape: (1, H, W)
+                "gt_edge": gt_edge        # Shape: (1, H, W)
+            }
+
+        # If GT is disabled, return only the required tensors
         return {
-            "input_edge": input_edge,     # Shape: (1, H, W)
-            "gt_edge": gt_edge,           # Shape: (1, H, W)
-            "gray": gray_img_tensor,      # Shape: (1, H, W)
-            "mask": mask_for_model        # Shape: (1, H, W)
+            "input_edge": input_edge,  # Shape: (1, H, W)
+            "gray": gray_img_tensor,  # Shape: (1, H, W)
+            "mask": mask_for_model    # Shape: (1, H, W)
         }
 
 
-
 # Initialize DataLoader for G1 with optional mask input
-def get_dataloader_g1(split="train", use_mask=False):
+def get_dataloader_g1(split="train", use_mask=False, use_gt=True):
+    """
+    Initializes the DataLoader for EdgeConnect+ G1 (Edge Generator).
+
+    Args:
+        split (str): Dataset split to use ('train', 'test', or 'val').
+        use_mask (bool): Whether to include the mask as input.
+        use_gt (bool): Whether to include ground truth-related processing.
+
+    Returns:
+        DataLoader: A PyTorch DataLoader for the specified dataset split.
+    """
     dataset_paths = {
         "train": (config.TRAIN_IMAGES_INPUT, config.TRAIN_IMAGES_GT),
         "test": (config.TEST_IMAGES_INPUT, config.TEST_IMAGES_GT),
@@ -82,7 +104,7 @@ def get_dataloader_g1(split="train", use_mask=False):
         raise ValueError("Invalid dataset split. Choose from 'train', 'test', or 'val'.")
     
     input_path, gt_path = dataset_paths[split]
-    dataset = EdgeConnectDataset_G1(input_path, gt_path, config.IMAGE_SIZE, use_mask)
+    dataset = EdgeConnectDataset_G1(input_path, gt_path if use_gt else None, config.IMAGE_SIZE, use_mask, use_gt)
     return DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS, pin_memory=config.PIN_MEMORY, prefetch_factor=2)
 
 # if __name__ == "__main__":
