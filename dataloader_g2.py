@@ -20,8 +20,7 @@ def gen_gidance_img(input_img, guidance_img):
 def validate_edge_map(split="train"):
     """
     Validates if the number of images in the input folder matches the number of images in the edge folder.
-    If the number of files doesn't match or any edge map is missing, the edge folder is cleared, and edge maps
-    are regenerated using the _generate_edge_maps function.
+    If the number of files doesn't match or any edge map is missing, the edge folder is cleared, and edge maps are regenerated using the _generate_edge_maps function.
 
     Args:
         split (str): Dataset split to use ('train', 'test', or 'val').
@@ -63,6 +62,59 @@ def validate_edge_map(split="train"):
             return False
 
     print("Number of images and corresponding edge maps match.")
+    return True
+
+
+def validate_guidance_images(split="train"):
+    """
+    Validates if guidance images exist for all input images.
+    If any guidance image is missing, they will be generated.
+
+    Args:
+        split (str): Dataset split to use ('train', 'test', or 'val').
+
+    Returns:
+        bool: True if validation was successful, False if regeneration was needed.
+    """
+    # Select directories based on the split
+    if split == "train":
+        input_dir = config.TRAIN_IMAGES_INPUT
+        guidance_dir = config.TRAIN_GUIDANCE_DIR
+    elif split == "test":
+        input_dir = config.TEST_IMAGES_INPUT
+        guidance_dir = config.TEST_GUIDANCE_DIR
+    elif split == "val":
+        input_dir = config.VAL_IMAGES_INPUT
+        guidance_dir = config.VAL_GUIDANCE_DIR
+    else:
+        raise ValueError("Invalid split. Choose from 'train', 'test', or 'val'.")
+
+    # Ensure guidance directory exists
+    os.makedirs(guidance_dir, exist_ok=True)
+    
+    # Get list of input and guidance images
+    input_path = Path(input_dir)
+    guidance_path = Path(guidance_dir)
+    input_files = sorted([f.name for f in input_path.glob("*.jpg")])
+    guidance_files = sorted([f.name for f in guidance_path.glob("*.jpg")])
+    
+    # Check if numbers match
+    if len(input_files) != len(guidance_files):
+        print(f"Mismatch in number of images: {len(input_files)} input images vs {len(guidance_files)} guidance images.")
+        print("Generating missing guidance images...")
+        _generate_guidance_images(split=split)
+        return False
+    
+    # Check if each input has a corresponding guidance image
+    for input_file in input_files:
+        basename = os.path.splitext(input_file)[0]
+        expected_guidance_file = f"{basename}.jpg"
+        if expected_guidance_file not in guidance_files:
+            print(f"Missing guidance image for {input_file}. Generating guidance images...")
+            _generate_guidance_images(split=split)
+            return False
+    
+    print("All guidance images exist.")
     return True
 
 
@@ -141,6 +193,67 @@ def _generate_edge_maps(split="train", batch_size=32):
     print(f"Generated edge maps for all input images in {edge_dir}.")
 
 
+def _generate_guidance_images(split="train"):
+    """
+    Generates guidance images for all input images based on edge maps.
+    
+    Args:
+        split (str): Dataset split to use ('train', 'test', or 'val').
+    """
+    # Select directories based on the split
+    if split == "train":
+        input_dir = config.TRAIN_IMAGES_INPUT
+        guidance_dir = config.TRAIN_GUIDANCE_DIR
+        edge_dir = config.TRAIN_EDGE_DIR
+    elif split == "test":
+        input_dir = config.TEST_IMAGES_INPUT
+        guidance_dir = config.TEST_GUIDANCE_DIR
+        edge_dir = config.TEST_EDGE_DIR
+    elif split == "val":
+        input_dir = config.VAL_IMAGES_INPUT
+        guidance_dir = config.VAL_GUIDANCE_DIR
+        edge_dir = config.VAL_EDGE_DIR
+    else:
+        raise ValueError("Invalid split. Choose from 'train', 'test', or 'val'.")
+    
+    # First make sure edge maps exist
+    validate_edge_map(split)
+    
+    # Ensure guidance directory exists
+    os.makedirs(guidance_dir, exist_ok=True)
+    
+    # Get all input images
+    input_files = sorted([f for f in os.scandir(input_dir) if f.name.endswith('.jpg')])
+    
+    print(f"Generating guidance images for {len(input_files)} input images...")
+    
+    # Process each input image
+    for file in input_files:
+        # Get corresponding edge map
+        basename = os.path.splitext(file.name)[0]
+        input_path = file.path
+        edge_path = os.path.join(edge_dir, f"edge_map_{basename.split('_')[-1]}.jpg")
+        guidance_path = os.path.join(guidance_dir, file.name)
+        
+        # Read images
+        input_img = cv2.imread(input_path)
+        edge_img = cv2.imread(edge_path, cv2.IMREAD_GRAYSCALE)
+        
+        if input_img is None or edge_img is None:
+            print(f"Warning: Could not read input or edge image for {file.name}")
+            continue
+        
+        # Generate guidance image using input and edge
+        # This would typically call the gen_guidance_img function
+        # For now, we'll use a simple combination as a placeholder
+        guidance_img = gen_gidance_img(input_img, edge_img)
+        
+        # Save the guidance image
+        cv2.imwrite(guidance_path, guidance_img)
+    
+    print(f"Generated guidance images in {guidance_dir}")
+
+
 class EdgeConnectDataset_G2(Dataset):
     def __init__(self, input_dir, guidance_dir, gt_dir=None, image_size=256, use_gt=True):
         """
@@ -198,9 +311,6 @@ class EdgeConnectDataset_G2(Dataset):
 
         # Read RGB images using cached method
         input_img = self._process_image(input_path)
-        ########################################################################
-        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
-        ########################################################################
         guidance_img = self._process_image(guidance_path)
 
         # Generate raw mask from input image
@@ -234,6 +344,7 @@ class EdgeConnectDataset_G2(Dataset):
 def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True, use_gt=True):
     """
     Returns a DataLoader for the G2 dataset based on the specified split.
+    Validates and generates guidance images if needed.
 
     Args:
         split (str): Dataset split to use ('train', 'test', or 'val').
@@ -244,6 +355,10 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True,
     Returns:
         DataLoader: PyTorch DataLoader for the G2 dataset.
     """
+    # First, validate edge maps and guidance images
+    validate_edge_map(split)
+    validate_guidance_images(split)
+    
     # Use dictionary mapping for more efficient directory selection
     dataset_paths = {
         "train": (config.TRAIN_IMAGES_INPUT, config.TRAIN_GUIDANCE_DIR, config.TRAIN_GT_DIR),
