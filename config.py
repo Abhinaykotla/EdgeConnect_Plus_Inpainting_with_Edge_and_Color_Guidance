@@ -38,7 +38,7 @@ class Config:
         self.TRAINING_SAMPLE_EPOCHS = 1    # Save training samples every N epochs
         self.MAX_BATCH_POINTS = 5000      # Max number of batch samples to save
         self.BATCH_SAMPLING_SIZE = 42      # Controls how often samples and logs are generated during training
-        # Note: BATCH_SAMPLING_SIZE controls how often samples and logs are generated during training
+# Note: BATCH_SAMPLING_SIZE controls how often samples and logs are generated during training
         # For optimal visualization without gaps:
         # - Calculate total_batches = dataset_size / BATCH_SIZE
         #   (For CelebA: 162079 images / 12 batch size = 13506 batches)
@@ -52,42 +52,60 @@ class Config:
         self.BATCH_SAMPLES_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/generated_samples/batch"))    # Mid-epoch samples
         self.LOSS_PLOT_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/plots"))  # Loss visualization charts
 
-        # Optimizer Parameters
+        # Optimizer Parameters for G1
         self.LEARNING_RATE_G1 = 0.0001       # Base learning rate for Adam optimizer
-        self.D2G_LR_RATIO_G1 = 0.02           # Ratio between discriminator and generator learning rates
-        self.BETA1 = 0.0                  # Adam optimizer beta1 parameter (momentum)
-        self.BETA2 = 0.9                  # Adam optimizer beta2 parameter (RMSprop)
-        self.WEIGHT_DECAY = 0.00005        # L2 regularization strength in Adam
+        self.D2G_LR_RATIO_G1 = 0.02          # Ratio between discriminator and generator learning rates
+        self.BETA1 = 0.0                     # Adam optimizer beta1 parameter (momentum)
+        self.BETA2 = 0.9                     # Adam optimizer beta2 parameter (RMSprop)
+        self.WEIGHT_DECAY = 0.00005          # L2 regularization strength in Adam
 
-        # Loss Weights (Controls the balance between different loss components)
+        # Loss Weights for G1
         self.L1_LOSS_WEIGHT = 0.5            # Pixel-wise reconstruction loss weight
-        self.ADV_LOSS_WEIGHT = 1.8         # Adversarial loss weight for generators
+        self.ADV_LOSS_WEIGHT = 1.8           # Adversarial loss weight for generators
         self.FM_LOSS_WEIGHT = 5.5            # Feature matching loss weight
-        self.STYLE_LOSS_WEIGHT = 250       # Style transfer loss weight
-        self.CONTENT_LOSS_WEIGHT = 1.0     # Content preservation loss weight
+        self.STYLE_LOSS_WEIGHT = 250         # Style transfer loss weight
+        self.CONTENT_LOSS_WEIGHT = 1.0       # Content preservation loss weight
 
         # Canny Edge Detection Parameters (For pre-processing input images)
-        self.CANNY_THRESHOLD_LOW = 45      # Lower threshold for Canny edge detection sensitivity
-        self.CANNY_THRESHOLD_HIGH = 140    # Upper threshold for Canny edge detection strength
+        self.CANNY_THRESHOLD_LOW = 45        # Lower threshold for Canny edge detection sensitivity
+        self.CANNY_THRESHOLD_HIGH = 140      # Upper threshold for Canny edge detection strength
 
-        # GAN Settings
-        self.GAN_LOSS = "nsgan"            # GAN loss function type (non-saturating GAN)
-        self.ADV_LOSS_TYPE = "lsgan"       # Adversarial loss type (least squares GAN for stability)
-        self.GAN_POOL_SIZE = 0             # Size of discriminator image buffer (0 = disabled)
+        # GAN Settings for G1
+        self.GAN_LOSS = "nsgan"              # GAN loss function type (non-saturating GAN)
+        self.ADV_LOSS_TYPE = "lsgan"         # Adversarial loss type (least squares GAN for stability)
+        self.GAN_POOL_SIZE = 0               # Size of discriminator image buffer (0 = disabled)
 
-        # Edge Detection Parameters (For model processing)
-        self.EDGE_THRESHOLD = 0.5          # Threshold for edge map binarization
-        self.SIGMA = 2                     # Gaussian blur sigma for edge smoothing
 
-        # Training Control Parameters
-        self.MAX_ITERS = 2000000           # Maximum number of iterations (backup to epoch limit)
-        self.SEED = 42                     # Random seed for reproducibility
-        self.GPU_IDS = [0]                 # GPU device IDs to use (for multi-GPU setups)
-        self.DEBUG = 0                     # Debug level (0 = off, higher = more verbose)
-        self.VERBOSE = True                   # Verbosity level of training output
-
-        # G2 ralated settings
+        # G1 Model Path
         self.G1_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "models/G1/checkpoints/best_edgeconnect_g1.pth"))  # Path to best G1 model checkpoint
-        
+
+        # Output directories for G2 model artifacts
+        self.MODEL_CHECKPOINT_DIR_G2 = os.path.abspath(os.path.join(base_dir, "models/G2/checkpoints"))  # Saved model states
+        self.EPOCH_SAMPLES_DIR_G2 = os.path.abspath(os.path.join(base_dir, "models/G2/generated_samples/epochs"))  # End-of-epoch samples
+        self.BATCH_SAMPLES_DIR_G2 = os.path.abspath(os.path.join(base_dir, "models/G2/generated_samples/batch"))    # Mid-epoch samples
+        self.LOSS_PLOT_DIR_G2 = os.path.abspath(os.path.join(base_dir, "models/G2/plots"))  # Loss visualization charts
+
+        # Optimizer Parameters for G2
+        self.LEARNING_RATE_G2 = 0.0001       # Base learning rate for Adam optimizer
+        self.D2G_LR_RATIO_G2 = 0.02          # Ratio between discriminator and generator learning rates
+        self.BETA1_G2 = 0.0                  # Adam optimizer beta1 parameter (momentum)
+        self.BETA2_G2 = 0.9                  # Adam optimizer beta2 parameter (RMSprop)
+        self.WEIGHT_DECAY_G2 = 0.00005       # L2 regularization strength in Adam
+
+        # Loss Weights for G2
+        self.L1_LOSS_WEIGHT_G2 = 0.5         # Pixel-wise reconstruction loss weight
+        self.ADV_LOSS_WEIGHT_G2 = 1.8        # Adversarial loss weight for generators
+        self.FM_LOSS_WEIGHT_G2 = 5.5         # Feature matching loss weight
+        self.STYLE_LOSS_WEIGHT_G2 = 250      # Style transfer loss weight
+        self.CONTENT_LOSS_WEIGHT_G2 = 1.0    # Content preservation loss weight
+
+        # GAN Settings for G2
+        self.GAN_LOSS_G2 = "nsgan"           # GAN loss function type (non-saturating GAN)
+        self.ADV_LOSS_TYPE_G2 = "lsgan"      # Adversarial loss type (least squares GAN for stability)
+        self.GAN_POOL_SIZE_G2 = 0            # Size of discriminator image buffer (0 = disabled)
+
+        # G2 Model Path
+        self.G2_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "models/G2/checkpoints/best_edgeconnect_g2.pth"))  # Path to best G2 model checkpoint
+
 # Initialize Config
 config = Config()
