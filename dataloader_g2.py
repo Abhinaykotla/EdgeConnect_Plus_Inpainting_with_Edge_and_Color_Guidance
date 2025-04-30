@@ -13,9 +13,11 @@ from functools import lru_cache
 from pathlib import Path
 
 
-def gen_gidance_img(input_img, guidance_img):
-    pass
+def gen_gidance_img(input_img, edge_img):
 
+    guidance_img = 1
+
+    return guidance_img
 
 def validate_edge_map(split="train"):
     """
@@ -40,6 +42,9 @@ def validate_edge_map(split="train"):
         edge_dir = config.VAL_EDGE_DIR
     else:
         raise ValueError("Invalid split. Choose from 'train', 'test', or 'val'.")
+
+    # Ensure edge directory exists
+    os.makedirs(edge_dir, exist_ok=True)
 
     input_files = sorted([f.name for f in os.scandir(input_dir) if f.name.endswith('.jpg')])
     edge_files = sorted([f.name for f in os.scandir(edge_dir) if f.name.endswith('.jpg')])
@@ -355,8 +360,7 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True,
     Returns:
         DataLoader: PyTorch DataLoader for the G2 dataset.
     """
-    # First, validate edge maps and guidance images
-    validate_edge_map(split)
+    # First, validate guidance images
     validate_guidance_images(split)
     
     # Use dictionary mapping for more efficient directory selection
@@ -389,3 +393,19 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True,
         pin_memory=config.PIN_MEMORY,
         prefetch_factor=2
     )
+
+
+if __name__ == '__main__':
+
+    train_loader = get_dataloader_g2(split="val")
+
+    for batch in train_loader:
+        input_img = batch["input_img"]
+        guidance_img = batch["guidance_img"]
+        mask = batch["mask"]
+        gt_img = batch.get("gt_img", None)  # Optional ground truth image
+
+        # Process your batch here
+        print(f"Input shape: {input_img.shape}, Guidance shape: {guidance_img.shape}, Mask shape: {mask.shape}")
+        if gt_img is not None:
+            print(f"GT shape: {gt_img.shape}")
