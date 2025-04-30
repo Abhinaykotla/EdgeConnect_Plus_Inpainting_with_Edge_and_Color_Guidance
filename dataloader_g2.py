@@ -187,7 +187,7 @@ class EdgeConnectDataset_G2(Dataset):
         }
 
 
-def get_dataloader_g2(input_dir, guidance_dir, gt_dir, batch_size=None, shuffle=True):
+def get_dataloader_g2(input_dir, guidance_dir, gt_dir, batch_size=config.BATCH_SIZE, shuffle=True):
     dataset = EdgeConnectDataset_G2(
         input_dir=input_dir,
         guidance_dir=guidance_dir,
