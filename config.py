@@ -14,16 +14,17 @@ class Config:
         # Training data: ground truth (complete) images and input (masked) images
         self.TRAIN_IMAGES_GT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/train_gt"))
         self.TRAIN_IMAGES_INPUT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/train_input"))
-        self.G1_EDGE_DIR = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/edge_maps"))  # Directory for G1 edge maps
-        self.G2_GUIDANCE_DIR = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/guidance"))  # Directory for G2 guidance images
+        self.TRAIN_EDGE_DIR = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/edge_maps/train"))  # Directory for G1 edge maps (train)
 
         # Testing data: used for final model evaluation
         self.TEST_IMAGES_GT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/test_gt"))
         self.TEST_IMAGES_INPUT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/test_input"))
+        self.TEST_EDGE_DIR = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/edge_maps/test"))  # Directory for G1 edge maps (test)
 
         # Validation data: used during training to monitor model performance
         self.VAL_IMAGES_GT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/val_gt"))
         self.VAL_IMAGES_INPUT = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/val_input"))
+        self.VAL_EDGE_DIR = os.path.abspath(os.path.join(base_dir, "data_archive/CelebA/edge_maps/val"))  # Directory for G1 edge maps (val)
 
         # Training Hyperparameters
         self.BATCH_SIZE = 30       # Number of images processed in each training iteration
@@ -38,14 +39,7 @@ class Config:
         self.TRAINING_SAMPLE_EPOCHS = 1    # Save training samples every N epochs
         self.MAX_BATCH_POINTS = 5000      # Max number of batch samples to save
         self.BATCH_SAMPLING_SIZE = 42      # Controls how often samples and logs are generated during training
-# Note: BATCH_SAMPLING_SIZE controls how often samples and logs are generated during training
-        # For optimal visualization without gaps:
-        # - Calculate total_batches = dataset_size / BATCH_SIZE
-        #   (For CelebA: 162079 images / 12 batch size = 13506 batches)
-        # - Choose BATCH_SAMPLING_SIZE as a divisor of total_batches
-        #   (e.g., values like 13506/2, 13506/3, or 13506/4)
-        # This ensures consistent sampling across the entire dataset
-        
+
         # Output directories for model artifacts
         self.MODEL_CHECKPOINT_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/checkpoints"))  # Saved model states
         self.EPOCH_SAMPLES_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/generated_samples/epochs"))  # End-of-epoch samples
@@ -74,7 +68,6 @@ class Config:
         self.GAN_LOSS = "nsgan"              # GAN loss function type (non-saturating GAN)
         self.ADV_LOSS_TYPE = "lsgan"         # Adversarial loss type (least squares GAN for stability)
         self.GAN_POOL_SIZE = 0               # Size of discriminator image buffer (0 = disabled)
-
 
         # G1 Model Path
         self.G1_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "models/G1/checkpoints/best_edgeconnect_g1.pth"))  # Path to best G1 model checkpoint
