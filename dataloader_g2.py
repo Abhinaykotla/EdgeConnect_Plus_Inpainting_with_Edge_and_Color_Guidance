@@ -7,11 +7,15 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from config import config
-from utils_dl import apply_canny, dilate_mask, gen_raw_mask
 from dataloader_g1 import get_dataloader_g1
+from utils_dl import apply_canny, dilate_mask, gen_raw_mask
+from functools import lru_cache
+from pathlib import Path
+
 
 def gen_gidance_img(input_img, guidance_img):
     pass
+
 
 def validate_edge_map(split="train"):
     """
@@ -119,7 +123,7 @@ def _generate_edge_maps(split="train", batch_size=32):
     for batch_idx, batch in enumerate(dataloader):
         input_edge = batch["input_edge"].to(config.DEVICE)  # Shape: (batch_size, 1, H, W)
         gray = batch["gray"].to(config.DEVICE)              # Shape: (batch_size, 1, H, W)
-        mask = batch["mask"].to(config.DEVICE)              # Shape: (batch_size, 1, H, W)
+        mask = batch["mask"].to(config.DEVICE)              # Shape: (1, H, W)
 
         # Generate edge maps for the batch
         with torch.no_grad():
@@ -138,67 +142,135 @@ def _generate_edge_maps(split="train", batch_size=32):
 
 
 class EdgeConnectDataset_G2(Dataset):
-    def __init__(self, input_dir, guidance_dir, gt_dir, image_size=256):
+    def __init__(self, input_dir, guidance_dir, gt_dir=None, image_size=256, use_gt=True):
+        """
+        Dataset loader for EdgeConnect+ G2.
+
+        Args:
+            input_dir (str): Path to input images.
+            guidance_dir (str): Path to guidance images.
+            gt_dir (str, optional): Path to ground truth images. Defaults to None.
+            image_size (int): Size of images.
+            use_gt (bool): Whether to include ground truth-related processing. Defaults to True.
+        """
         self.input_dir = input_dir
         self.guidance_dir = guidance_dir
         self.gt_dir = gt_dir
         self.image_size = image_size
+        self.use_gt = use_gt
+        
+        # Convert to Path objects for more efficient file operations
+        input_path = Path(input_dir)
+        guidance_path = Path(guidance_dir)
+        self.input_files = sorted([f.name for f in input_path.glob("*.jpg")])
+        self.guidance_files = sorted([f.name for f in guidance_path.glob("*.jpg")])
 
-        self.input_files = sorted([f.name for f in os.scandir(input_dir) if f.name.endswith('.jpg')])
-        self.guidance_files = sorted([f.name for f in os.scandir(guidance_dir) if f.name.endswith('.jpg')])
-        self.gt_files = sorted([f.name for f in os.scandir(gt_dir) if f.name.endswith('.jpg')])
-
-        assert len(self.input_files) == len(self.guidance_files) == len(self.gt_files), \
-            "Mismatch in number of images."
-
+        if self.use_gt and gt_dir:
+            gt_path = Path(gt_dir)
+            self.gt_files = sorted([f.name for f in gt_path.glob("*.jpg")])
+            assert len(self.input_files) == len(self.guidance_files) == len(self.gt_files), \
+                "Mismatch in number of images."
+        else:
+            assert len(self.input_files) == len(self.guidance_files), \
+                "Mismatch in number of input and guidance images."
+        
+        # Define transform for consistent resizing
         self.transform = transforms.Compose([
-            transforms.ToTensor(),  # Converts to [0,1] and permutes to [C,H,W]
-            transforms.Resize((self.image_size, self.image_size))
+            transforms.ToTensor(),
+            transforms.Resize((image_size, image_size))
         ])
 
     def __len__(self):
         return len(self.input_files)
+    
+    @staticmethod
+    @lru_cache(maxsize=32)  # Cache recently processed images
+    def _process_image(img_path):
+        """Process and cache image loading to avoid redundant operations"""
+        img = cv2.imread(img_path)
+        if img is not None:
+            return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        return None
 
     def __getitem__(self, idx):
         input_path = os.path.join(self.input_dir, self.input_files[idx])
         guidance_path = os.path.join(self.guidance_dir, self.guidance_files[idx])
-        gt_path = os.path.join(self.gt_dir, self.gt_files[idx])
 
-        # Read RGB images
-        input_img = cv2.cvtColor(cv2.imread(input_path), cv2.COLOR_BGR2RGB)
-        guidance_img = cv2.cvtColor(cv2.imread(guidance_path), cv2.COLOR_BGR2RGB)
-        gt_img = cv2.cvtColor(cv2.imread(gt_path), cv2.COLOR_BGR2RGB)
+        # Read RGB images using cached method
+        input_img = self._process_image(input_path)
+        ########################################################################
+        #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
+        ########################################################################
+        guidance_img = self._process_image(guidance_path)
 
-        # Mask: white (255,255,255) → missing, others → known
-        mask = np.all(input_img > 245, axis=-1).astype(np.float32)  # shape: (H,W)
-        mask = (1.0 - mask).astype(np.float32)  # 1.0 = missing, 0.0 = known
+        # Generate raw mask from input image
+        raw_mask = gen_raw_mask(input_img)
 
-        # Apply transforms
+        # Get dilated mask (in [0,1] range where 1.0 = missing pixels)
+        dilated_mask_np = dilate_mask(raw_mask)
+
+        # Convert to Tensors with proper formatting
         input_tensor = self.transform(input_img)
         guidance_tensor = self.transform(guidance_img)
-        gt_tensor = self.transform(gt_img)
-        mask_tensor = torch.from_numpy(mask).unsqueeze(0)  # (1, H, W)
-
-        return {
+        mask_for_model = 1.0 - dilated_mask_np
+        mask_tensor = torch.from_numpy(mask_for_model).float().unsqueeze(0)  # Shape: (1, H, W)
+        
+        # Common return elements
+        result = {
             "input_img": input_tensor,
             "guidance_img": guidance_tensor,
-            "mask": mask_tensor,
-            "gt_img": gt_tensor
+            "mask": mask_tensor
         }
 
+        # If ground truth is enabled, process GT-related data
+        if self.use_gt and self.gt_dir:
+            gt_path = os.path.join(self.gt_dir, self.gt_files[idx])
+            gt_img = self._process_image(gt_path)
+            result["gt_img"] = self.transform(gt_img)
 
-def get_dataloader_g2(input_dir, guidance_dir, gt_dir, batch_size=config.BATCH_SIZE, shuffle=True):
+        return result
+
+
+def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True, use_gt=True):
+    """
+    Returns a DataLoader for the G2 dataset based on the specified split.
+
+    Args:
+        split (str): Dataset split to use ('train', 'test', or 'val').
+        batch_size (int): Number of samples per batch.
+        shuffle (bool): Whether to shuffle the dataset.
+        use_gt (bool): Whether to include ground truth-related processing. Defaults to True.
+
+    Returns:
+        DataLoader: PyTorch DataLoader for the G2 dataset.
+    """
+    # Use dictionary mapping for more efficient directory selection
+    dataset_paths = {
+        "train": (config.TRAIN_IMAGES_INPUT, config.TRAIN_GUIDANCE_DIR, config.TRAIN_GT_DIR),
+        "test": (config.TEST_IMAGES_INPUT, config.TEST_GUIDANCE_DIR, config.TEST_GT_DIR),
+        "val": (config.VAL_IMAGES_INPUT, config.VAL_GUIDANCE_DIR, config.VAL_GT_DIR)
+    }
+    
+    if split not in dataset_paths:
+        raise ValueError("Invalid split. Choose from 'train', 'test', or 'val'.")
+    
+    input_dir, guidance_dir, gt_dir = dataset_paths[split]
+    
+    # Create the dataset
     dataset = EdgeConnectDataset_G2(
         input_dir=input_dir,
         guidance_dir=guidance_dir,
-        gt_dir=gt_dir,
-        image_size=config.IMAGE_SIZE
+        gt_dir=gt_dir if use_gt else None,
+        image_size=config.IMAGE_SIZE,
+        use_gt=use_gt
     )
 
+    # Return the DataLoader
     return DataLoader(
         dataset,
         batch_size=batch_size or config.BATCH_SIZE,
         shuffle=shuffle,
         num_workers=config.NUM_WORKERS,
-        pin_memory=config.PIN_MEMORY
+        pin_memory=config.PIN_MEMORY,
+        prefetch_factor=2
     )
