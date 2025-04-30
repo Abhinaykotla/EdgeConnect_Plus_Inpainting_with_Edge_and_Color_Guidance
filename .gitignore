@@ -10,3 +10,9 @@ __pycache__/
 *.json
 *.ini
 *.rar
+*.fls
+*.flv
+*.aux
+*.log
+*.out
+*.fdb_latexmk

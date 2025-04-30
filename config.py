@@ -56,13 +56,13 @@ class Config:
         #######################################################################
         
         # Output directories for G1 model artifacts
-        self.MODEL_CHECKPOINT_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/checkpoints"))
-        self.EPOCH_SAMPLES_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/generated_samples/epochs"))
-        self.BATCH_SAMPLES_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/generated_samples/batch"))
-        self.LOSS_PLOT_DIR_G1 = os.path.abspath(os.path.join(base_dir, "models/G1/plots"))
+        self.MODEL_CHECKPOINT_DIR_G1 = os.path.abspath(os.path.join(base_dir, "outputs/G1/checkpoints"))
+        self.EPOCH_SAMPLES_DIR_G1 = os.path.abspath(os.path.join(base_dir, "outputs/G1/generated_samples/epochs"))
+        self.BATCH_SAMPLES_DIR_G1 = os.path.abspath(os.path.join(base_dir, "outputs/G1/generated_samples/batch"))
+        self.LOSS_PLOT_DIR_G1 = os.path.abspath(os.path.join(base_dir, "outputs/G1/plots"))
         
         # G1 Model Path
-        self.G1_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "models/G1/checkpoints/best_edgeconnect_g1.pth"))
+        self.G1_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "outputs/G1/checkpoints/best_edgeconnect_g1.pth"))
         
         # Optimizer Parameters for G1
         self.LEARNING_RATE_G1 = 0.0001     # Base learning rate for Adam optimizer
@@ -88,13 +88,13 @@ class Config:
         #######################################################################
         
         # Output directories for G2 model artifacts
-        self.MODEL_CHECKPOINT_DIR_G2 = os.path.abspath(os.path.join(base_dir, "models/G2/checkpoints"))
-        self.EPOCH_SAMPLES_DIR_G2 = os.path.abspath(os.path.join(base_dir, "models/G2/generated_samples/epochs"))
-        self.BATCH_SAMPLES_DIR_G2 = os.path.abspath(os.path.join(base_dir, "models/G2/generated_samples/batch"))
-        self.LOSS_PLOT_DIR_G2 = os.path.abspath(os.path.join(base_dir, "models/G2/plots"))
+        self.MODEL_CHECKPOINT_DIR_G2 = os.path.abspath(os.path.join(base_dir, "outputs/G2/checkpoints"))
+        self.EPOCH_SAMPLES_DIR_G2 = os.path.abspath(os.path.join(base_dir, "outputs/G2/generated_samples/epochs"))
+        self.BATCH_SAMPLES_DIR_G2 = os.path.abspath(os.path.join(base_dir, "outputs/G2/generated_samples/batch"))
+        self.LOSS_PLOT_DIR_G2 = os.path.abspath(os.path.join(base_dir, "outputs/G2/plots"))
         
         # G2 Model Path
-        self.G2_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "models/G2/checkpoints/best_edgeconnect_g2.pth"))
+        self.G2_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "outputs/G2/checkpoints/best_edgeconnect_g2.pth"))
         
         # Optimizer Parameters for G2
         self.LEARNING_RATE_G2 = 0.0001     # Base learning rate for Adam optimizer

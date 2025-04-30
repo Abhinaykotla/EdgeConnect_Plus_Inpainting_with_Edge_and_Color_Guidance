@@ -46,10 +46,10 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Automatically use GPU if available
         
         # Output directories for model artifacts
-        self.MODEL_CHECKPOINT_DIR_G1 = os.path.join(base_drive_dir, "models/checkpoints")  # For saved model states
-        self.EPOCH_SAMPLES_DIR_G1 = os.path.join(base_drive_dir, "models/generated_samples/epochs")  # For epoch-based samples
-        self.BATCH_SAMPLES_DIR_G1 = os.path.join(base_drive_dir, "models/generated_samples/batch")  # For batch-based samples
-        self.LOSS_PLOT_DIR_G1 = os.path.join(base_drive_dir, "models/plots")  # For loss visualizations
+        self.MODEL_CHECKPOINT_DIR_G1 = os.path.join(base_drive_dir, "outputs/checkpoints")  # For saved model states
+        self.EPOCH_SAMPLES_DIR_G1 = os.path.join(base_drive_dir, "outputs/generated_samples/epochs")  # For epoch-based samples
+        self.BATCH_SAMPLES_DIR_G1 = os.path.join(base_drive_dir, "outputs/generated_samples/batch")  # For batch-based samples
+        self.LOSS_PLOT_DIR_G1 = os.path.join(base_drive_dir, "outputs/plots")  # For loss visualizations
 
         # Optimizer Parameters
         self.LEARNING_RATE_G1 = 0.0001       # Base learning rate for Adam optimizer
