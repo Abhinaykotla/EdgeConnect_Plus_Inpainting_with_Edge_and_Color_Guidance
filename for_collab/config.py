@@ -46,14 +46,14 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Automatically use GPU if available
         
         # Output directories for model artifacts
-        self.MODEL_CHECKPOINT_DIR = os.path.join(base_drive_dir, "models/checkpoints")  # For saved model states
-        self.EPOCH_SAMPLES_DIR = os.path.join(base_drive_dir, "models/generated_samples/epochs")  # For epoch-based samples
-        self.BATCH_SAMPLES_DIR = os.path.join(base_drive_dir, "models/generated_samples/batch")  # For batch-based samples
-        self.LOSS_PLOT_DIR = os.path.join(base_drive_dir, "models/plots")  # For loss visualizations
+        self.MODEL_CHECKPOINT_DIR_G1 = os.path.join(base_drive_dir, "models/checkpoints")  # For saved model states
+        self.EPOCH_SAMPLES_DIR_G1 = os.path.join(base_drive_dir, "models/generated_samples/epochs")  # For epoch-based samples
+        self.BATCH_SAMPLES_DIR_G1 = os.path.join(base_drive_dir, "models/generated_samples/batch")  # For batch-based samples
+        self.LOSS_PLOT_DIR_G1 = os.path.join(base_drive_dir, "models/plots")  # For loss visualizations
 
         # Optimizer Parameters
-        self.LEARNING_RATE = 0.0001       # Base learning rate for Adam optimizer
-        self.D2G_LR_RATIO = 0.1           # Ratio between discriminator and generator learning rates
+        self.LEARNING_RATE_G1 = 0.0001       # Base learning rate for Adam optimizer
+        self.D2G_LR_RATIO_G1 = 0.1           # Ratio between discriminator and generator learning rates
         self.BETA1 = 0.0                  # Adam optimizer beta1 parameter (momentum)
         self.BETA2 = 0.9                  # Adam optimizer beta2 parameter (RMSprop)
         self.WEIGHT_DECAY = 0.00005        # L2 regularization strength in Adam

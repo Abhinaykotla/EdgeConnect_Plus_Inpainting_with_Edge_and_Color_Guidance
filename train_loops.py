@@ -86,14 +86,14 @@ def train_g1_and_d1():
     # Optimizers using config settings
     optimizer_g = torch.optim.Adam(
         g1.parameters(), 
-        lr=config.LEARNING_RATE, 
+        lr=config.LEARNING_RATE_G1, 
         betas=(config.BETA1, config.BETA2), 
         weight_decay=config.WEIGHT_DECAY
     )
 
     optimizer_d = torch.optim.Adam(
         d1.parameters(), 
-        lr=config.LEARNING_RATE * config.D2G_LR_RATIO,  
+        lr=config.LEARNING_RATE_G1 * config.D2G_LR_RATIO_G1,  
         betas=(config.BETA1, config.BETA2), 
         weight_decay=config.WEIGHT_DECAY
     )
@@ -248,13 +248,13 @@ def train_g1_and_d1():
         history["d1_loss"].append(avg_d1_loss)
 
         # First save the current losses to JSON files
-        save_losses_to_json(batch_losses, epoch_losses, config.LOSS_PLOT_DIR)
+        save_losses_to_json(batch_losses, epoch_losses, config.LOSS_PLOT_DIR_G1)
         
         # Reset batch losses for the next epoch to avoid duplication
         batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
 
         # Then plot using the saved JSON files
-        plot_losses(config.LOSS_PLOT_DIR)
+        plot_losses(config.LOSS_PLOT_DIR_G1)
 
         # Save best model checkpoint if G1 loss improves
         if avg_g1_loss < best_g1_loss:

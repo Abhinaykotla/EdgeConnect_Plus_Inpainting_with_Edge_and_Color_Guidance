@@ -132,7 +132,7 @@ def test_custom_image(image_path=None):
         test_dataloader = get_dataloader_g1(split="test", use_mask=True)
 
         # Directory to save generated images
-        output_dir = os.path.join(config.MODEL_CHECKPOINT_DIR, "test_results")
+        output_dir = os.path.join(config.MODEL_CHECKPOINT_DIR_G1, "test_results")
         os.makedirs(output_dir, exist_ok=True)
 
         with torch.no_grad():
