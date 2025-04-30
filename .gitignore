@@ -3,7 +3,8 @@ __pycache__/
 *.pyc
 *.jpg
 *.png
-*.zip
+data_archive/*.zip
+data_archive/**/*.zip
 *.pth
 *.tar
 *.gz
