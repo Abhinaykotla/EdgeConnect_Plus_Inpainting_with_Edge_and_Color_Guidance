@@ -75,13 +75,7 @@ class Config:
         self.L1_LOSS_WEIGHT = 0.5          # Pixel-wise reconstruction loss weight
         self.ADV_LOSS_WEIGHT = 1.8         # Adversarial loss weight for generators
         self.FM_LOSS_WEIGHT = 5.5          # Feature matching loss weight
-        self.STYLE_LOSS_WEIGHT = 250       # Style transfer loss weight
-        self.CONTENT_LOSS_WEIGHT = 1.0     # Content preservation loss weight
-        
-        # GAN Settings for G1
-        self.GAN_LOSS = "nsgan"            # GAN loss function type (non-saturating GAN)
-        self.ADV_LOSS_TYPE = "lsgan"       # Adversarial loss type (least squares GAN for stability)
-        self.GAN_POOL_SIZE = 0             # Size of discriminator image buffer (0 = disabled)
+
 
         #######################################################################
         # G2 MODEL CONFIGURATIONS (Inpainting Generator)
@@ -104,16 +98,11 @@ class Config:
         self.WEIGHT_DECAY_G2 = 0.00005     # L2 regularization strength in Adam
         
         # Loss Weights for G2
-        self.L1_LOSS_WEIGHT_G2 = 0.5       # Pixel-wise reconstruction loss weight
-        self.ADV_LOSS_WEIGHT_G2 = 1.8      # Adversarial loss weight for generators
-        self.FM_LOSS_WEIGHT_G2 = 5.5       # Feature matching loss weight
-        self.STYLE_LOSS_WEIGHT_G2 = 250    # Style transfer loss weight
-        self.CONTENT_LOSS_WEIGHT_G2 = 1.0  # Content preservation loss weight
-        
-        # GAN Settings for G2
-        self.GAN_LOSS_G2 = "nsgan"         # GAN loss function type (non-saturating GAN)
-        self.ADV_LOSS_TYPE_G2 = "lsgan"    # Adversarial loss type (least squares GAN for stability)
-        self.GAN_POOL_SIZE_G2 = 0          # Size of discriminator image buffer (0 = disabled)
+        self.L1_LOSS_WEIGHT_G2 = 1.0       # Pixel-wise reconstruction loss weight
+        self.ADV_LOSS_WEIGHT_G2 = 0.1      # Adversarial loss weight for generators
+        self.PERCEPTUAL_LOSS_G2 = 5.5      # Perceptual loss weight (VGG19 feature loss)
+        self.STYLE_LOSS_WEIGHT_G2 = 120    # Style transfer loss weight
+
 
 # Initialize Config
 config = Config()
