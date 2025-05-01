@@ -27,7 +27,7 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         self.NUM_WORKERS = 12
         self.PIN_MEMORY = True
-        self.EPOCHS = 30
+        self.EPOCHS = 40
         self.EARLY_STOP_PATIENCE = 5
         self.IMAGE_SIZE = 256
 
@@ -69,7 +69,7 @@ class Config:
         self.BATCH_SIZE_G1 = 192
         self.BATCH_SIZE_G1_INFERENCE = 128
         self.LEARNING_RATE_G1 = 0.0001
-        self.D2G_LR_RATIO_G1 = 0.02
+        self.D2G_LR_RATIO_G1 = 0.08
         self.BETA1 = 0.0
         self.BETA2 = 0.9
         self.WEIGHT_DECAY = 0.00005
