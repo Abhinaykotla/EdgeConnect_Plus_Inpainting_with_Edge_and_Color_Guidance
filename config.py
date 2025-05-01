@@ -12,10 +12,12 @@ class Config:
         if "COLAB_GPU" in os.environ or in_colab:
             # Paths for Colab
             self.BASE_DIR = "/content/EdgeConnectPlus"
+            self.DRIVE_DS_DIR = "/content/drive/MyDrive/EdgeConnectPlus/"
             self.OUTPUT_DIR = "/content/drive/MyDrive/EdgeConnectPlus/outputs"
         else:
             # Local environment
             self.BASE_DIR = os.getcwd()
+            self.DRIVE_DS_DIR = os.getcwd()
             self.OUTPUT_DIR = os.path.join(self.BASE_DIR, "outputs")
 
         #######################################################################
@@ -45,15 +47,15 @@ class Config:
         self.TRAIN_EDGE_DIR = os.path.join(self.BASE_DIR, "data_archive/CelebA/edge_maps/train")
         self.TRAIN_GUIDANCE_DIR = os.path.join(self.BASE_DIR, "data_archive/CelebA/guidance/train")
 
-        self.TEST_IMAGES_GT = os.path.join(self.BASE_DIR, "data_archive/CelebA/test_gt")
-        self.TEST_IMAGES_INPUT = os.path.join(self.BASE_DIR, "data_archive/CelebA/test_input")
-        self.TEST_EDGE_DIR = os.path.join(self.BASE_DIR, "data_archive/CelebA/edge_maps/test")
-        self.TEST_GUIDANCE_DIR = os.path.join(self.BASE_DIR, "data_archive/CelebA/guidance/test")
+        self.TEST_IMAGES_GT = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/test_gt")
+        self.TEST_IMAGES_INPUT = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/test_input")
+        self.TEST_EDGE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/edge_maps/test")
+        self.TEST_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/guidance/test")
 
-        self.VAL_IMAGES_GT = os.path.join(self.BASE_DIR, "data_archive/CelebA/val_gt")
-        self.VAL_IMAGES_INPUT = os.path.join(self.BASE_DIR, "data_archive/CelebA/val_input")
-        self.VAL_EDGE_DIR = os.path.join(self.BASE_DIR, "data_archive/CelebA/edge_maps/val")
-        self.VAL_GUIDANCE_DIR = os.path.join(self.BASE_DIR, "data_archive/CelebA/guidance/val")
+        self.VAL_IMAGES_GT = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/val_gt")
+        self.VAL_IMAGES_INPUT = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/val_input")
+        self.VAL_EDGE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/edge_maps/val")
+        self.VAL_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/guidance/val")
 
         #######################################################################
         # G1 MODEL CONFIGURATIONS
