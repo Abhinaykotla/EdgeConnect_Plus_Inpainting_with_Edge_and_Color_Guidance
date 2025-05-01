@@ -27,14 +27,14 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         self.NUM_WORKERS = 12
         self.PIN_MEMORY = True
-        self.EPOCHS = 50
+        self.EPOCHS = 15
         self.EARLY_STOP_PATIENCE = 5
         self.IMAGE_SIZE = 256
 
         self.VALIDATION_SAMPLE_EPOCHS = 10
         self.TRAINING_SAMPLE_EPOCHS = 1
         self.MAX_BATCH_POINTS = 10000
-        self.BATCH_SAMPLING_SIZE = 2 # 169
+        self.BATCH_SAMPLING_SIZE = 218
 
         self.CANNY_THRESHOLD_LOW = 45
         self.CANNY_THRESHOLD_HIGH = 140
@@ -66,7 +66,7 @@ class Config:
         self.LOSS_PLOT_DIR_G1 = os.path.join(self.OUTPUT_DIR, "G1/plots")
         self.G1_MODEL_PATH = os.path.join(self.MODEL_CHECKPOINT_DIR_G1, "g1_best.pth")
 
-        self.BATCH_SIZE_G1 = 20 # 192
+        self.BATCH_SIZE_G1 = 124
         self.BATCH_SIZE_G1_INFERENCE = 128
         self.LEARNING_RATE_G1 = 0.0001
         self.D2G_LR_RATIO_G1 = 0.05

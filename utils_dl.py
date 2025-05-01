@@ -291,8 +291,7 @@ def _generate_edge_maps(split="train", batch_size=32):
     checkpoint = torch.load(checkpoint_path, map_location=config.DEVICE)
 
     # Initialize the model architecture
-  # Replace with your actual model class
-    model = EdgeGenerator()  # Initialize the model
+    model = EdgeGenerator()
 
     # Check if the checkpoint contains a full dictionary or just the state_dict
     if "g1_state_dict" in checkpoint:
