@@ -69,15 +69,15 @@ class Config:
         self.BATCH_SIZE_G1 = 124
         self.BATCH_SIZE_G1_INFERENCE = 128
         self.LEARNING_RATE_G1 = 0.0001
-        self.D2G_LR_RATIO_G1 = 0.05
+        self.D2G_LR_RATIO_G1 = 0.09
         self.BETA1 = 0.0
         self.BETA2 = 0.9
         self.WEIGHT_DECAY = 0.00005
 
-        self.L1_LOSS_WEIGHT = 1.0
-        self.ADV_LOSS_WEIGHT = 1.8
-        self.FM_LOSS_WEIGHT = 3.5
-        self.VGG_LOSS_WEIGHT = 0.75
+        self.L1_LOSS_WEIGHT = 1.2
+        self.ADV_LOSS_WEIGHT = 2.0
+        self.FM_LOSS_WEIGHT = 2.0
+        self.VGG_LOSS_WEIGHT = 0.5
 
 
         #######################################################################
