@@ -27,14 +27,14 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         self.NUM_WORKERS = 12
         self.PIN_MEMORY = True
-        self.EPOCHS = 100
-        self.EARLY_STOP_PATIENCE = 5
+        self.EPOCHS = 150
+        self.EARLY_STOP_PATIENCE = 6
         self.IMAGE_SIZE = 256
 
-        self.VALIDATION_SAMPLE_EPOCHS = 5
+        self.VALIDATION_SAMPLE_EPOCHS = 10
         self.TRAINING_SAMPLE_EPOCHS = 1
         self.MAX_BATCH_POINTS = 10000
-        self.BATCH_SAMPLING_SIZE = 2
+        self.BATCH_SAMPLING_SIZE = 169
 
         self.CANNY_THRESHOLD_LOW = 45
         self.CANNY_THRESHOLD_HIGH = 140
@@ -74,9 +74,9 @@ class Config:
         self.BETA2 = 0.9
         self.WEIGHT_DECAY = 0.00005
 
-        self.L1_LOSS_WEIGHT = 0.5
+        self.L1_LOSS_WEIGHT = 0.8
         self.ADV_LOSS_WEIGHT = 1.8
-        self.FM_LOSS_WEIGHT = 5.5
+        self.FM_LOSS_WEIGHT = 4.0
 
         #######################################################################
         # G2 MODEL CONFIGURATIONS
