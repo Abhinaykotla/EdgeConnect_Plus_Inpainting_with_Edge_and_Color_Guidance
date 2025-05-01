@@ -298,6 +298,12 @@ def _generate_edge_maps(split="train", batch_size=32):
         print(f"Processed batch {batch_idx + 1}/{len(dataloader)}")
 
     print(f"Generated edge maps for all input images in {edge_dir}.")
+    
+    # Clean up GPU memory
+    model.cpu()
+    del model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
 def _generate_guidance_images(split="train"):
