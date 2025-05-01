@@ -2,7 +2,6 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 class ResidualBlock(nn.Module):
     """
@@ -126,12 +125,3 @@ class EdgeDiscriminator(nn.Module):
         x = torch.cat((input_edges, edge), dim=1)  # Concatenate along channel axis
         return self.model(x)  # Output shape: [B, 1, 30, 30]
 
-
-def adversarial_loss(pred, target):
-    return F.binary_cross_entropy_with_logits(pred, target)
-
-def feature_matching_loss(disc_real, disc_fake):
-    return torch.mean(torch.abs(disc_real - disc_fake))
-
-def l1_loss(pred, target):
-    return F.l1_loss(pred, target)
