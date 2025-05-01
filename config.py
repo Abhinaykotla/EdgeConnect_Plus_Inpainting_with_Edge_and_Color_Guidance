@@ -66,7 +66,7 @@ class Config:
         self.LOSS_PLOT_DIR_G1 = os.path.join(self.OUTPUT_DIR, "G1/plots")
         self.G1_MODEL_PATH = os.path.join(self.MODEL_CHECKPOINT_DIR_G1, "g1_best.pth")
 
-        self.BATCH_SIZE_G1 = 192
+        self.BATCH_SIZE_G1 = 224
         self.BATCH_SIZE_G1_INFERENCE = 128
         self.LEARNING_RATE_G1 = 0.0001
         self.D2G_LR_RATIO_G1 = 0.02
