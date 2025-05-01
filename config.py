@@ -25,8 +25,8 @@ class Config:
         # Common Logging Parameters
         self.VALIDATION_SAMPLE_EPOCHS = 5  # Run validation and save samples every N epochs
         self.TRAINING_SAMPLE_EPOCHS = 1    # Save training samples every N epochs
-        self.MAX_BATCH_POINTS = 5000       # Max number of batch samples to save
-        self.BATCH_SAMPLING_SIZE = 42      # Controls how often samples and logs are generated during training
+        self.MAX_BATCH_POINTS = 10000       # Max number of batch samples to save
+        self.BATCH_SAMPLING_SIZE = 2      # Controls how often samples and logs are generated during training
         
         # Canny Edge Detection Parameters (For pre-processing input images)
         self.CANNY_THRESHOLD_LOW = 45      # Lower threshold for Canny edge detection sensitivity
