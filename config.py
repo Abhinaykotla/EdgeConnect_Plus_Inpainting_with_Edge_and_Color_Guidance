@@ -15,7 +15,6 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Automatically use GPU if available
         
         # Training Hyperparameters
-        self.BATCH_SIZE = 8              # Number of images processed in each training iteration
         self.NUM_WORKERS = 4              # Number of parallel data loading workers
         self.PIN_MEMORY = True            # Speeds up CPU to GPU memory transfer when enabled
         self.EPOCHS = 100                 # Maximum number of complete passes through the training dataset
@@ -63,7 +62,9 @@ class Config:
         
         # G1 Model Path
         self.G1_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "outputs/G1/checkpoints/g1_best.pth"))
-        
+
+        self.BATCH_SIZE_G1 = 32            # Number of images processed in each training iteration
+
         # Optimizer Parameters for G1
         self.LEARNING_RATE_G1 = 0.0001     # Base learning rate for Adam optimizer
         self.D2G_LR_RATIO_G1 = 0.02        # Ratio between discriminator and generator learning rates
@@ -88,8 +89,10 @@ class Config:
         self.LOSS_PLOT_DIR_G2 = os.path.abspath(os.path.join(base_dir, "outputs/G2/plots"))
         
         # G2 Model Path
-        self.G2_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "outputs/G2/checkpoints/best_edgeconnect_g2.pth"))
+        self.G2_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "outputs/G2/checkpoints/g2_best.pth"))
         
+        self.BATCH_SIZE_G2 = 8            # Number of images processed in each training iteration
+
         # Optimizer Parameters for G2
         self.LEARNING_RATE_G2 = 0.0001     # Base learning rate for Adam optimizer
         self.D2G_LR_RATIO_G2 = 0.02        # Ratio between discriminator and generator learning rates
