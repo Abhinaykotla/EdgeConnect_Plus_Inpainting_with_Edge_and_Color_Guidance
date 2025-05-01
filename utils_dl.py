@@ -34,8 +34,8 @@ def dilate_mask(mask, kernel_size=5, iterations=1):
     
     Args:
         mask: Input mask tensor or numpy array. Should be in format where:
-              0 = missing pixels (value < 10)
-              255 = known pixels (value >= 10)
+            0 = missing pixels (value < 10)
+            255 = known pixels (value >= 10)
         kernel_size: Size of dilation kernel
         iterations: Number of dilation iterations
     

@@ -15,8 +15,8 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"  # Automatically use GPU if available
         
         # Training Hyperparameters
-        self.BATCH_SIZE = 30              # Number of images processed in each training iteration
-        self.NUM_WORKERS = 6              # Number of parallel data loading workers
+        self.BATCH_SIZE = 8              # Number of images processed in each training iteration
+        self.NUM_WORKERS = 4              # Number of parallel data loading workers
         self.PIN_MEMORY = True            # Speeds up CPU to GPU memory transfer when enabled
         self.EPOCHS = 100                 # Maximum number of complete passes through the training dataset
         self.EARLY_STOP_PATIENCE = 5      # Stop training if no improvement after this many epochs

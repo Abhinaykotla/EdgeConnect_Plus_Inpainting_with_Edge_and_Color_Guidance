@@ -1,6 +1,8 @@
 # train.py
 
-from train_loops import train_g1_and_d1
+from train_loops_g2 import train_g2_and_d2
+from train_loops_g1 import train_g1_and_d1
+
 import multiprocessing
 
 if __name__ == '__main__':
@@ -8,4 +10,5 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()
     
     # Call your training function
-    train_g1_and_d1()
+    # train_g1_and_d1()
+    train_g2_and_d2()

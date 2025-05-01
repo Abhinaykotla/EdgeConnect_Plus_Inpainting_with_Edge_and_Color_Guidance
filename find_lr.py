@@ -1,7 +1,7 @@
 import gc
 from config import config
 import torch
-from train_loops import l1_loss
+from loss_functions import l1_loss
 from g1_model import EdgeGenerator
 from dataloader_g1 import get_dataloader_g1
 
