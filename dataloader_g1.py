@@ -96,7 +96,7 @@ class EdgeConnectDataset_G1(Dataset):
         return result
 
 
-def get_dataloader_g1(split="train", batch_size=config.BATCH_SIZE, shuffle=True, use_mask=True, use_gt=True, return_filenames=False):
+def get_dataloader_g1(split="train", batch_size=config.BATCH_SIZE_G1, shuffle=True, use_mask=True, use_gt=True, return_filenames=False):
     """
     Initializes the DataLoader for EdgeConnect+ G1 (Edge Generator).
 
