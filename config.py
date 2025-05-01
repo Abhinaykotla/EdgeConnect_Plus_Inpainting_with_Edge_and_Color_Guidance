@@ -38,6 +38,7 @@ class Config:
 
         self.CANNY_THRESHOLD_LOW = 45
         self.CANNY_THRESHOLD_HIGH = 140
+        self.OVERRIDE_LR = True
 
         #######################################################################
         # DATASET PATHS (you can limit to only train data in Colab)

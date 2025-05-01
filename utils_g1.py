@@ -304,10 +304,19 @@ def load_checkpoint(g1, d1, optimizer_g, optimizer_d, g1_ema=None):
     if checkpoint_files:
         latest_checkpoint = checkpoint_files[-1]
         checkpoint = torch.load(latest_checkpoint, map_location=config.DEVICE, weights_only=False)
+
         g1.load_state_dict(checkpoint["g1_state_dict"])
         d1.load_state_dict(checkpoint["d1_state_dict"])
         optimizer_g.load_state_dict(checkpoint["optimizer_g"])
         optimizer_d.load_state_dict(checkpoint["optimizer_d"])
+
+        # Force override learning rates from config
+        if config.OVERRIDE_LR:
+            for param_group in optimizer_g.param_groups:
+                param_group["lr"] = config.LEARNING_RATE_G1
+            for param_group in optimizer_d.param_groups:
+                param_group["lr"] = config.LEARNING_RATE_G1 * config.D2G_LR_RATIO_G1
+
         best_loss = checkpoint["best_loss"]
         history = checkpoint["history"]
 
