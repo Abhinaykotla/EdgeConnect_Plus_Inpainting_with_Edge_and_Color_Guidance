@@ -105,9 +105,45 @@ def gen_raw_mask(input_img):
 # G2 dataloader functions
 ####################################################
 
-def gen_gidance_img(input_img, edge_img):
+# def gen_gidance_img(input_img, edge_img):
 
-    guidance_img = input_img.copy()
+#     guidance_img = input_img.copy()
+
+#     return guidance_img 
+
+def gen_gidance_img(input_img, edge_img, edge_threshold=30, edge_color=(255, 0, 0)):
+    """
+    Generate a guidance image by:
+    1. Using TELEA inpainting on masked regions.
+    2. Overlaying thin colored edges (e.g., red) inside only the masked area.
+
+    Args:
+        input_img (np.ndarray): Masked BGR image (H, W, 3)
+        edge_img (np.ndarray): Grayscale predicted edge image (H, W)
+        edge_threshold (int): Edge threshold for overlay
+        edge_color (tuple): BGR tuple for edge overlay color
+
+    Returns:
+        np.ndarray: Guidance image ready for G2 input
+    """
+    # Step 1: Generate binary mask from white pixels using provided utility
+    raw_mask = gen_raw_mask(input_img)  # Values: 0 (missing) or 255 (valid)
+    binary_mask = (raw_mask < 10).astype(np.uint8)  # 1 = missing, 0 = known
+
+    # Step 2: Inpaint the image using TELEA after dilation
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    expanded_mask = cv2.dilate(binary_mask, kernel, iterations=1)
+
+    inpaint_input = input_img.copy()
+    inpaint_input[expanded_mask == 1] = 0
+    inpainted_color = cv2.inpaint(inpaint_input, expanded_mask * 255, 15, cv2.INPAINT_TELEA)
+
+    # Step 3: Overlay edge map inside mask
+    edge_binary = (edge_img > edge_threshold).astype(np.uint8)
+    masked_edges = np.logical_and(binary_mask == 1, edge_binary == 0)
+
+    guidance_img = inpainted_color.copy()
+    guidance_img[masked_edges] = edge_color
 
     return guidance_img
 
@@ -234,7 +270,7 @@ def _generate_edge_maps(split="train", batch_size=32):
     Generates edge maps for all input images in batches and saves them in the edge folder.
     """
     # Import here instead of at the top level
-    from dataloader_g1 import get_dataloader_g1
+    # from dataloader_g1 import get_dataloader_g1
     
     # Select input and edge directories based on the split
     if split == "train":
@@ -254,7 +290,7 @@ def _generate_edge_maps(split="train", batch_size=32):
     checkpoint = torch.load(checkpoint_path, map_location=config.DEVICE)
 
     # Initialize the model architecture
-    from g1_model import EdgeGenerator  # Replace with your actual model class
+    # from g1_model import EdgeGenerator  # Replace with your actual model class
     model = EdgeGenerator()  # Initialize the model
 
     # Check if the checkpoint contains a full dictionary or just the state_dict
