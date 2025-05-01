@@ -7,6 +7,8 @@ from loss_functions import adversarial_loss, l1_loss, feature_matching_loss
 from g1_model import EdgeGenerator, EdgeDiscriminator
 from utils_g1 import save_checkpoint, load_checkpoint, save_losses_to_json, plot_losses, save_generated_images, print_model_info, calculate_model_hash
 from config import config
+from loss_functions import VGG16FeatureExtractor, perceptual_loss
+vgg = VGG16FeatureExtractor().to(config.DEVICE).eval()
 
 class EMA:
     """
@@ -49,23 +51,26 @@ class EMA:
         self.backup = {}
 
 
-def gradient_penalty(discriminator, real_samples, fake_samples):
-    """
-    Implements Gradient Penalty for WGAN-GP and helps stabilize training.
-    """
-    alpha = torch.rand(real_samples.size(0), 1, 1, 1, device=config.DEVICE)
-    interpolates = (alpha * real_samples + ((1 - alpha) * fake_samples)).requires_grad_(True)
-    d_interpolates = discriminator(interpolates, real_samples)
+def gradient_penalty(discriminator, input_edges, gray, real_edge, fake_edge):
+    alpha = torch.rand(real_edge.size(0), 1, 1, 1, device=config.DEVICE)
+    interpolated = (alpha * real_edge + (1 - alpha) * fake_edge).detach().requires_grad_(True)
 
-    grad_outputs = torch.ones(d_interpolates.size(), device=config.DEVICE)
+    d_interpolates = discriminator(input_edges.detach(), gray.detach(), interpolated)
+
+    grad_outputs = torch.ones_like(d_interpolates, device=config.DEVICE)
+
     gradients = torch.autograd.grad(
-        outputs=d_interpolates, inputs=interpolates,
-        grad_outputs=grad_outputs, create_graph=True, retain_graph=True, only_inputs=True
+        outputs=d_interpolates,
+        inputs=interpolated,
+        grad_outputs=grad_outputs,
+        create_graph=True,
+        retain_graph=True,
+        only_inputs=True
     )[0]
 
     gradients = gradients.view(gradients.size(0), -1)
-    gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
-    return gradient_penalty
+    gp = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+    return gp
 
 
 # Training Loop for EdgeConnect+ G1 Model
@@ -172,16 +177,20 @@ def train_g1_and_d1():
                 pred_edge_detached = pred_edge.detach()
                 
                 # Adversarial Loss
-                fake_pred = d1(input_edges, pred_edge)  
+                fake_pred = d1(input_edges, gray, pred_edge)
                 target_real = torch.ones_like(fake_pred, device=config.DEVICE) * 0.9  # Smoothed labels
                 g1_loss_adv = adversarial_loss(fake_pred, target_real)  
 
                 # Feature Matching Loss
-                real_features = d1(input_edges, gt_edges).detach()  # Real edge features from D1
+                real_features = d1(input_edges, gray, gt_edges).detach()  # Real edge features from D1
                 g1_loss_fm = feature_matching_loss(real_features, fake_pred) * config.FM_LOSS_WEIGHT  
 
+                # VGG Perceptual Loss (use .repeat to convert 1-channel to 3-channel for VGG)
+                g1_loss_perc = perceptual_loss(vgg, pred_edge.repeat(1, 3, 1, 1), gt_edges.repeat(1, 3, 1, 1)) * config.VGG_LOSS_WEIGHT
+
                 # Total Generator Loss
-                loss_g = g1_loss_l1 + g1_loss_adv + g1_loss_fm
+                loss_g = g1_loss_l1 + g1_loss_adv + g1_loss_fm + g1_loss_perc
+
 
             scaler.scale(loss_g).backward()
             scaler.step(optimizer_g)
@@ -194,19 +203,21 @@ def train_g1_and_d1():
             optimizer_d.zero_grad()
 
             with torch.amp.autocast(config.DEVICE):  
-                real_pred = d1(input_edges, gt_edges)  
-                fake_pred_detached = d1(input_edges, pred_edge_detached)  # Use the detached tensor
+                real_pred = d1(input_edges, gray, gt_edges)  
+                # use pred_edge_detached
+                fake_pred_detached = d1(input_edges, gray, pred_edge_detached)
+
 
                 target_fake = torch.zeros_like(fake_pred_detached, device=config.DEVICE) + 0.1
                 real_loss = adversarial_loss(real_pred, target_real)
                 fake_loss = adversarial_loss(fake_pred_detached, target_fake)
 
                 lambda_gp = 10  # Gradient penalty weight
-                gp = gradient_penalty(d1, gt_edges, pred_edge_detached)
+                gp = gradient_penalty(d1, input_edges, gray, gt_edges.detach(), pred_edge_detached)
                 loss_d = (real_loss + fake_loss) / 2 + lambda_gp * gp
 
 
-            scaler.scale(loss_d).backward()
+            scaler.scale(loss_d).backward(retain_graph=True)
             scaler.step(optimizer_d)
             scaler.update()
 
@@ -219,6 +230,8 @@ def train_g1_and_d1():
             batch_losses['G1_FM'].append(g1_loss_fm.item())
             batch_losses['D1_Real'].append(real_loss.item())
             batch_losses['D1_Fake'].append(fake_loss.item())
+            batch_losses.setdefault('G1_VGG', []).append(g1_loss_perc.item())
+            batch_losses.setdefault('G1_VGG', []).append(g1_loss_perc.item())
 
             # Print progress every 100 batches
             if (batch_idx + 1) % config.BATCH_SAMPLING_SIZE == 0:
@@ -252,7 +265,15 @@ def train_g1_and_d1():
         save_losses_to_json(batch_losses, epoch_losses, config.LOSS_PLOT_DIR_G1)
         
         # Reset batch losses for the next epoch to avoid duplication
-        batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
+        batch_losses = {
+                'batch_idx': [],
+                'G1_L1': [],
+                'G1_Adv': [],
+                'G1_FM': [],
+                'G1_VGG': [],
+                'D1_Real': [],
+                'D1_Fake': []
+            }
 
         # Then plot using the saved JSON files
         plot_losses(config.LOSS_PLOT_DIR_G1)
