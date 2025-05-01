@@ -93,6 +93,7 @@ class Config:
         self.G2_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "outputs/G2/checkpoints/g2_best.pth"))
         
         self.BATCH_SIZE_G2 = 8            # Number of images processed in each training iteration
+        self.BATCH_SIZE_G2_INFERENCE = 96 # Batch size for inference
 
         # Optimizer Parameters for G2
         self.LEARNING_RATE_G2 = 0.0001     # Base learning rate for Adam optimizer
