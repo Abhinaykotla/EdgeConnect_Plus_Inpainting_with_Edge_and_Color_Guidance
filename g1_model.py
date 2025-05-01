@@ -87,7 +87,7 @@ class EdgeDiscriminator(nn.Module):
     PatchGAN-based Discriminator (D1) for Edge Generation.
     Takes (input_edges, gt_edges/pred_edge) and classifies 30x30 patches as real or fake.
     """
-    def __init__(self, in_channels=2):  # (input_edges + gt_edges or pred_edge)
+    def __init__(self, in_channels=3):  # (input_edges + Geayscale Image + gt_edges or pred_edge)
         super(EdgeDiscriminator, self).__init__()
 
         def discriminator_block(in_filters, out_filters, stride=2):
@@ -111,7 +111,7 @@ class EdgeDiscriminator(nn.Module):
             nn.utils.spectral_norm(nn.Conv2d(512, 1, kernel_size=4, stride=1, padding=1))  # [B, 512, 30, 30] -> [B, 1, 30, 30]
         )
 
-    def forward(self, input_edges, edge):
+    def forward(self, input_edges, gray, edge):
         """
         Forward pass for the discriminator.
         
@@ -122,6 +122,6 @@ class EdgeDiscriminator(nn.Module):
         Returns:
         - Patch-based logits for real/fake classification.
         """
-        x = torch.cat((input_edges, edge), dim=1)  # Concatenate along channel axis
+        x = torch.cat((input_edges, gray, edge), dim=1)  # Concatenate along channel axis
         return self.model(x)  # Output shape: [B, 1, 30, 30]
 
