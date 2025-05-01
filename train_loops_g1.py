@@ -231,7 +231,6 @@ def train_g1_and_d1():
             batch_losses['D1_Real'].append(real_loss.item())
             batch_losses['D1_Fake'].append(fake_loss.item())
             batch_losses.setdefault('G1_VGG', []).append(g1_loss_perc.item())
-            batch_losses.setdefault('G1_VGG', []).append(g1_loss_perc.item())
 
             # Print progress every 100 batches
             if (batch_idx + 1) % config.BATCH_SAMPLING_SIZE == 0:
