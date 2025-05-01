@@ -99,7 +99,7 @@ class EdgeConnectDataset_G2(Dataset):
         return result
 
 
-def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True, use_gt=True):
+def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE_G2, shuffle=True, use_gt=True):
     """
     Returns a DataLoader for the G2 dataset based on the specified split.
     Validates and generates guidance images if needed.
@@ -140,7 +140,7 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True,
     # Return the DataLoader
     return DataLoader(
         dataset,
-        batch_size=batch_size or config.BATCH_SIZE,
+        batch_size=batch_size or config.BATCH_SIZE_G2,
         shuffle=shuffle,
         num_workers=config.NUM_WORKERS,
         pin_memory=config.PIN_MEMORY,
