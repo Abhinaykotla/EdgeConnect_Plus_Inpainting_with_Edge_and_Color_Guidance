@@ -10,5 +10,5 @@ if __name__ == '__main__':
     multiprocessing.freeze_support()
     
     # Call your training function
-    # train_g1_and_d1()
-    train_g2_and_d2()
+    train_g1_and_d1()
+    # train_g2_and_d2()

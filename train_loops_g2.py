@@ -5,7 +5,14 @@ import torch
 from dataloader_g2 import get_dataloader_g2
 from g2_model import InpaintingGeneratorG2, InpaintDiscriminatorG2
 from loss_functions import adversarial_loss, l1_loss, perceptual_loss, style_loss, VGG16FeatureExtractor
-from utils import save_checkpoint, load_checkpoint, save_losses_to_json, plot_losses, save_generated_images, print_model_info, calculate_model_hash
+from utils_g2 import (
+    save_checkpoint_g2, 
+    load_checkpoint_g2, 
+    plot_losses_g2, 
+    save_generated_images_g2, 
+    save_losses_to_json_g2,
+    print_model_info_g2
+)
 from config import config
 
 
@@ -32,8 +39,8 @@ def train_g2_and_d2():
     batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': []}
     epoch_losses = {'epoch': [], 'G2_Loss': [], 'D2_Loss': []}
 
-    print_model_info(g2, model_name="Inpainting Generator (G2)")
-    print_model_info(d2, model_name="Discriminator (D2)")
+    print_model_info_g2(g2, model_name="Inpainting Generator (G2)")
+    print_model_info_g2(d2, model_name="Discriminator (D2)")
 
     for epoch in range(1, config.EPOCHS + 1):
         g2.train(); d2.train()
@@ -97,13 +104,13 @@ def train_g2_and_d2():
         history["g2_loss"].append(avg_g_loss)
         history["d2_loss"].append(avg_d_loss)
 
-        save_losses_to_json(batch_losses, epoch_losses, config.LOSS_PLOT_DIR_G2)
+        save_losses_to_json_g2(batch_losses, epoch_losses, config.LOSS_PLOT_DIR_G2)
         batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': []}
-        plot_losses(config.LOSS_PLOT_DIR_G2)
+        plot_losses_g2(config.LOSS_PLOT_DIR_G2)
 
         if avg_g_loss < best_loss:
             best_loss = avg_g_loss
-            save_checkpoint(epoch, g2, d2, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses)
+            save_checkpoint_g2(epoch, g2, d2, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses)
 
         if epoch % config.TRAINING_SAMPLE_EPOCHS == 0:
             print(f"📸 Saving Training Samples at Epoch {epoch}...")
@@ -113,8 +120,8 @@ def train_g2_and_d2():
                 pred_img = g2(samples["input_img"].to(config.DEVICE),
                               samples["guidance_img"].to(config.DEVICE),
                               samples["mask"].to(config.DEVICE))
-                save_generated_images(epoch, samples["input_img"], samples["mask"], samples["gt_img"],
-                                      samples["guidance_img"], pred_img, mode="train")
+                save_generated_images_g2(epoch, samples["input_img"], samples["mask"], samples["gt_img"],
+                                         samples["guidance_img"], pred_img, mode="train")
 
         if epoch % config.VALIDATION_SAMPLE_EPOCHS == 0:
             print(f"🔍 Validation Samples at Epoch {epoch}...")
@@ -124,7 +131,7 @@ def train_g2_and_d2():
                 pred_img = g2(val_samples["input_img"].to(config.DEVICE),
                               val_samples["guidance_img"].to(config.DEVICE),
                               val_samples["mask"].to(config.DEVICE))
-                save_generated_images(epoch, val_samples["input_img"], val_samples["mask"], val_samples["gt_img"],
-                                      val_samples["guidance_img"], pred_img, mode="val")
+                save_generated_images_g2(epoch, val_samples["input_img"], val_samples["mask"], val_samples["gt_img"],
+                                         val_samples["guidance_img"], pred_img, mode="val")
 
         print(f"✅ Epoch {epoch} - G2 Loss: {avg_g_loss:.4f}, D2 Loss: {avg_d_loss:.4f}\n")
