@@ -5,7 +5,7 @@ class Config:
     def __init__(self):
         # Detect Colab
         try:
-            in_colab = "google.colab" in str(get_ipython())
+            in_colab = "google.colab" in str(get_ipython()) # type: ignore[no-untyped-call]
         except NameError:
             in_colab = False
 
