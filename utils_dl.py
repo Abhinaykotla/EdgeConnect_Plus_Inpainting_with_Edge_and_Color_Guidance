@@ -270,7 +270,7 @@ def _generate_edge_maps(split="train", batch_size=32):
     Generates edge maps for all input images in batches and saves them in the edge folder.
     """
     # Import here instead of at the top level
-    # from dataloader_g1 import get_dataloader_g1
+    from dataloader_g1 import get_dataloader_g1
     
     # Select input and edge directories based on the split
     if split == "train":
@@ -290,7 +290,7 @@ def _generate_edge_maps(split="train", batch_size=32):
     checkpoint = torch.load(checkpoint_path, map_location=config.DEVICE)
 
     # Initialize the model architecture
-    # from g1_model import EdgeGenerator  # Replace with your actual model class
+    from g1_model import EdgeGenerator  # Replace with your actual model class
     model = EdgeGenerator()  # Initialize the model
 
     # Check if the checkpoint contains a full dictionary or just the state_dict
