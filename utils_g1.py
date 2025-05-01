@@ -100,7 +100,7 @@ def plot_losses(save_dir):
     batch_path = os.path.join(save_dir, 'batch_losses.json')
     epoch_path = os.path.join(save_dir, 'epoch_losses.json')
     
-    batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'D1_Real': [], 'D1_Fake': []}
+    batch_losses = {'batch_idx': [], 'G1_L1': [], 'G1_Adv': [], 'G1_FM': [], 'G1_VGG': [], 'D1_Real': [], 'D1_Fake': []}
     epoch_losses = {'epoch': [], 'G1_Loss': [], 'D1_Loss': []}
     
     if os.path.exists(batch_path):
@@ -130,6 +130,7 @@ def plot_losses(save_dir):
                 plt.plot(batch_losses['batch_idx'], batch_losses['G1_L1'], label='G1 L1', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], batch_losses['G1_Adv'], label='G1 Adv', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], batch_losses['G1_FM'], label='G1 FM', alpha=0.7)
+                plt.plot(batch_losses['batch_idx'], batch_losses['G1_VGG'], label='G1 VGG', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], batch_losses['D1_Real'], label='D1 Real', linestyle='dashed', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], batch_losses['D1_Fake'], label='D1 Fake', linestyle='dashed', alpha=0.7)
         except (json.JSONDecodeError, KeyError):
