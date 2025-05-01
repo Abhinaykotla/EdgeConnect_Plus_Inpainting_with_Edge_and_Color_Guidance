@@ -4,7 +4,6 @@ import torch
 import numpy as np
 from config import config
 from pathlib import Path
-from dataloader_g1 import get_dataloader_g1
 from g1_model import EdgeGenerator
 
 
@@ -272,7 +271,7 @@ def _generate_edge_maps(split="train", batch_size=32):
     Generates edge maps for all input images in batches and saves them in the edge folder.
     """
     # Import here instead of at the top level
-    
+    from dataloader_g1 import get_dataloader_g1
     
     # Select input and edge directories based on the split
     if split == "train":
