@@ -147,7 +147,7 @@ def validate_edge_map(split="train"):
         print(f"Mismatch in number of images: {len(input_files)} input images vs {len(edge_files)} edge images.")
         print("Clearing edge folder and regenerating edge maps...")
         _clear_folder(edge_dir)
-        _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE)
+        _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE)
         return False
 
     # Check if all input images have corresponding edge maps
@@ -157,7 +157,7 @@ def validate_edge_map(split="train"):
         if expected_edge_file not in edge_files:
             print(f"Missing edge map for {input_file.name}. Clearing edge folder and regenerating edge maps...")
             _clear_folder(edge_dir)
-            _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE)
+            _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE)
             return False
 
     print("Number of images and corresponding edge maps match.")

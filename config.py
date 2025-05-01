@@ -64,6 +64,7 @@ class Config:
         self.G1_MODEL_PATH = os.path.abspath(os.path.join(base_dir, "outputs/G1/checkpoints/g1_best.pth"))
 
         self.BATCH_SIZE_G1 = 32            # Number of images processed in each training iteration
+        self.BATCH_SIZE_G1_INFERENCE = 128 # Batch size for inference
 
         # Optimizer Parameters for G1
         self.LEARNING_RATE_G1 = 0.0001     # Base learning rate for Adam optimizer
