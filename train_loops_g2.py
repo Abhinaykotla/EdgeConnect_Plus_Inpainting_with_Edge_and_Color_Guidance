@@ -62,7 +62,7 @@ class EMA:
                 param.data = self.backup[name]
         self.backup = {}
 
-
+  
 def gradient_penalty(discriminator, input_img, guidance_img, real_img, fake_img):
     alpha = torch.rand(real_img.size(0), 1, 1, 1, device=config.DEVICE)
     interpolated = (alpha * real_img + (1 - alpha) * fake_img).detach().requires_grad_(True)
@@ -196,6 +196,19 @@ def train_g2_and_d2():
             batch_losses['D2_Real'].append(d2_real_loss.item())
             batch_losses['D2_Fake'].append(d2_fake_loss.item())
             batch_losses['D2_GP'].append(gp.item())
+
+            # Add within batch loop in G2:
+            if (batch_idx + 1) % config.BATCH_SAMPLING_SIZE == 0:
+                print(f"  🔹 Batch [{batch_idx+1}/{len(train_loader)}] - G2 Loss: {g_loss.item():.4f}, D2 Loss: {d_loss.item():.4f}")
+                
+                print(f"\n📸 Saving Training Samples for batch {batch_idx+1}...\n")
+                # Apply EMA for sample generation
+                g2_ema.apply_shadow()
+                g2.eval()
+                with torch.no_grad():
+                    pred_img_ema = g2(input_img, guidance_img, mask)
+                save_generated_images_g2(epoch, input_img, mask, gt_img, guidance_img, pred_img_ema, mode="train", batch_idx=batch_idx+1)
+                g2_ema.restore()
 
         # Epoch logging
         avg_g_loss = epoch_g_loss / len(train_loader)
