@@ -25,24 +25,60 @@ def calculate_model_hash_g2(model):
     return param_hash
 
 
+class EMA:
+    """Exponential Moving Average for model weights."""
+    def __init__(self, model, decay=0.999):
+        self.model = model
+        self.decay = decay
+        self.shadow = {}
+        self.backup = {}
+        
+        # Register model parameters
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                self.shadow[name] = param.data.clone()
+    
+    def update(self):
+        """Update EMA parameters after each optimization step"""
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                assert name in self.shadow
+                new_average = self.decay * self.shadow[name] + (1.0 - self.decay) * param.data
+                self.shadow[name] = new_average.clone()
+    
+    def apply_shadow(self):
+        """Apply EMA weights for inference"""
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                assert name in self.shadow
+                self.backup[name] = param.data.clone()
+                param.data = self.shadow[name]
+    
+    def restore(self):
+        """Restore original parameters after inference"""
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                assert name in self.backup
+                param.data = self.backup[name]
+        self.backup = {}
+
+
 def train_g2_and_d2():
     print("\n🔹 Initializing G2 & D2 Model Training Setup...\n")
 
     # Model Init
     g2 = InpaintingGeneratorG2().to(config.DEVICE)
     d2 = InpaintDiscriminatorG2().to(config.DEVICE)
-    g2_ema = InpaintingGeneratorG2().to(config.DEVICE)  # EMA model
+    g2_ema = EMA(g2, decay=0.999)  # EMA model
     vgg = VGG16FeatureExtractor().to(config.DEVICE).eval()
-
-    # Initialize EMA model with same weights
-    for param_ema, param in zip(g2_ema.parameters(), g2.parameters()):
-        param_ema.data.copy_(param.data)
-    g2_ema.eval()
 
     optimizer_g = torch.optim.Adam(g2.parameters(), lr=config.LEARNING_RATE_G2,
                                    betas=(config.BETA1_G2, config.BETA2_G2), weight_decay=config.WEIGHT_DECAY_G2)
     optimizer_d = torch.optim.Adam(d2.parameters(), lr=config.LEARNING_RATE_G2 * config.D2G_LR_RATIO_G2,
                                    betas=(config.BETA1_G2, config.BETA2_G2), weight_decay=config.WEIGHT_DECAY_G2)
+
+    scheduler_g = torch.optim.lr_scheduler.StepLR(optimizer_g, step_size=10, gamma=0.9)
+    scheduler_d = torch.optim.lr_scheduler.StepLR(optimizer_d, step_size=10, gamma=0.9)
 
     # Use Mixed Precision for Faster Training
     scaler = torch.amp.GradScaler(device=config.DEVICE)
@@ -109,9 +145,7 @@ def train_g2_and_d2():
             scaler.update()
 
             # Update EMA model
-            with torch.no_grad():
-                for param_ema, param in zip(g2_ema.parameters(), g2.parameters()):
-                    param_ema.data = param_ema.data * 0.999 + param.data * 0.001
+            g2_ema.update()
 
             ########################### D2 TRAINING ###########################
             optimizer_d.zero_grad()
@@ -153,6 +187,9 @@ def train_g2_and_d2():
         batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': []}
         plot_losses_g2(config.LOSS_PLOT_DIR_G2)
 
+        scheduler_g.step()
+        scheduler_d.step()
+
         if avg_g_loss < best_loss:
             best_loss = avg_g_loss
             save_checkpoint_g2(epoch, g2, d2, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses, g2_ema)
@@ -165,6 +202,7 @@ def train_g2_and_d2():
 
         if epoch % config.TRAINING_SAMPLE_EPOCHS == 0:
             print(f"📸 Saving Training Samples at Epoch {epoch}...")
+            g2_ema.apply_shadow()
             g2.eval()
             with torch.no_grad():
                 samples = next(iter(train_loader))
@@ -173,9 +211,11 @@ def train_g2_and_d2():
                               samples["mask"].to(config.DEVICE))
                 save_generated_images_g2(epoch, samples["input_img"], samples["mask"], samples["gt_img"],
                                          samples["guidance_img"], pred_img, mode="train")
+            g2_ema.restore()
 
         if epoch % config.VALIDATION_SAMPLE_EPOCHS == 0:
             print(f"🔍 Validation Samples at Epoch {epoch}...")
+            g2_ema.apply_shadow()
             g2.eval()
             with torch.no_grad():
                 val_samples = next(iter(val_loader))
@@ -184,6 +224,7 @@ def train_g2_and_d2():
                               val_samples["mask"].to(config.DEVICE))
                 save_generated_images_g2(epoch, val_samples["input_img"], val_samples["mask"], val_samples["gt_img"],
                                          val_samples["guidance_img"], pred_img, mode="val")
+            g2_ema.restore()
 
         elapsed_time = time.time() - start_time
         print(f"✅ Epoch {epoch}/{num_epochs} - G2 Loss: {avg_g_loss:.4f}, D2 Loss: {avg_d_loss:.4f}, Time: {elapsed_time/60:.2f} min\n")
