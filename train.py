@@ -24,11 +24,11 @@ if __name__ == '__main__':
 
 
 
-        # from train_loops_g2 import train_g2_and_d2
-        # print("Starting EdgeConnect G2 (Inpainting Generator) training...")
-        # train_g2_and_d2()
+        from train_loops_g2 import train_g2_and_d2
+        print("Starting EdgeConnect G2 (Inpainting Generator) training...")
+        train_g2_and_d2()
 
 
-        from train_loops_g1 import train_g1_and_d1
-        print("Starting EdgeConnect G1 (Edge Generator) training...")
-        train_g1_and_d1()
+        # from train_loops_g1 import train_g1_and_d1
+        # print("Starting EdgeConnect G1 (Edge Generator) training...")
+        # train_g1_and_d1()
