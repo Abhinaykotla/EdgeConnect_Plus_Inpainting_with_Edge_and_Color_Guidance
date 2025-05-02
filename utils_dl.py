@@ -106,47 +106,51 @@ def gen_raw_mask(input_img):
 # G2 dataloader functions
 ####################################################
 
-# def gen_gidance_img(input_img, edge_img):
 
-#     guidance_img = input_img.copy()
-
-#     return guidance_img 
-
-def gen_gidance_img(input_img, edge_img, edge_threshold=210, edge_color=(0, 0, 0)):
+def gen_gidance_img(input_img, edge_img, edge_threshold=30, edge_color=(0, 0, 0), blur_ksize=(7, 7)):
     """
-    Generate a guidance image by:
-    1. Using TELEA inpainting on masked regions.
-    2. Overlaying thin colored edges (e.g., red) inside only the masked area.
+    Fast implementation to create guidance images:
+    1. Identify mask (white regions in input image)
+    2. Inpaint the masked regions
+    3. Blur the inpainted image
+    4. Overlay the edges from edge_img
+    5. Copy the result only where the mask is present
 
     Args:
-        input_img (np.ndarray): Masked BGR image (H, W, 3)
-        edge_img (np.ndarray): Grayscale predicted edge image (H, W)
-        edge_threshold (int): Edge threshold for overlay
-        edge_color (tuple): BGR tuple for edge overlay color
+        input_img: Input image with white masks
+        edge_img: Grayscale edge prediction 
+        edge_threshold: Threshold for edge detection
+        edge_color: BGR color to draw edges
+        blur_ksize: Kernel size for Gaussian blur
 
     Returns:
-        np.ndarray: Guidance image ready for G2 input
+        Guidance image with inpainted+blurred content only in masked regions
     """
-    # Step 1: Generate binary mask from white pixels using provided utility
-    raw_mask = gen_raw_mask(input_img)  # Values: 0 (missing) or 255 (valid)
-    binary_mask = (raw_mask < 10).astype(np.uint8)  # 1 = missing, 0 = known
-
-    # Step 2: Inpaint the image using TELEA after dilation
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    expanded_mask = cv2.dilate(binary_mask, kernel, iterations=1)
-
-    inpaint_input = input_img.copy()
-    inpaint_input[expanded_mask == 1] = 0
-    inpainted_color = cv2.inpaint(inpaint_input, expanded_mask * 255, 15, cv2.INPAINT_TELEA)
-
-    # Step 3: Overlay edge map inside mask
-    edge_binary = (edge_img > edge_threshold).astype(np.uint8)
-    masked_edges = np.logical_and(binary_mask == 1, edge_binary == 0)
-
-    guidance_img = inpainted_color.copy()
-    guidance_img[masked_edges] = edge_color
-
+    # Create a copy to avoid modifying the original
+    guidance_img = input_img.copy()
+    
+    # Step 1: Generate binary mask from white regions (1 where mask exists)
+    mask = np.all(input_img > 245, axis=-1).astype(np.uint8)
+    
+    # Step 2: Inpaint using faster NS method instead of TELEA
+    inpainted = cv2.inpaint(input_img, mask * 255, 5, cv2.INPAINT_NS)
+    
+    # Step 3: Apply blur only to the inpainted image
+    blurred = cv2.GaussianBlur(inpainted, blur_ksize, 0)
+    
+    # Step 4: Overlay edges on the blurred image
+    # Find edge positions above threshold
+    edge_positions = edge_img < edge_threshold  # Edges are dark in edge_img
+    
+    # Apply edges only within mask regions
+    masked_edge_positions = np.logical_and(mask == 1, edge_positions)
+    blurred[masked_edge_positions] = edge_color
+    
+    # Step 5: Copy the processed content only where the mask is present
+    guidance_img[mask == 1] = blurred[mask == 1]
+    
     return guidance_img
+
 
 def validate_edge_map(split="train"):
     """
@@ -374,11 +378,12 @@ def _generate_guidance_images(split="train"):
     # Get all input images
     input_path = Path(input_dir)
     input_files = sorted([f for f in input_path.glob("*.jpg")])
+    total_files = len(input_files)
     
-    print(f"Generating guidance images for {len(input_files)} input images...")
+    print(f"Generating guidance images for {total_files} input images...")
     
     # Process each input image
-    for file in input_files:
+    for idx, file in enumerate(input_files):
         # Get corresponding edge map
         basename = os.path.splitext(file.name)[0]
         input_path = str(file)  # Convert WindowsPath to string
@@ -394,12 +399,14 @@ def _generate_guidance_images(split="train"):
             continue
         
         # Generate guidance image using input and edge
-        # This would typically call the gen_guidance_img function
-        # For now, we'll use a simple combination as a placeholder
         guidance_img = gen_gidance_img(input_img, edge_img)
         
         # Save the guidance image
         cv2.imwrite(guidance_path, guidance_img)
+        
+        # Print progress every 100 files
+        if (idx + 1) % 100 == 0:
+            print(f"Progress: {idx + 1}/{total_files} guidance images generated ({(idx + 1)/total_files*100:.1f}%)")
     
-    print(f"Generated guidance images in {guidance_dir}.")
+    print(f"Generated all {total_files} guidance images in {guidance_dir}.")
 

@@ -65,7 +65,7 @@ class Config:
         self.EPOCH_SAMPLES_DIR_G1 = os.path.join(self.OUTPUT_DIR, "G1/generated_samples/epochs")
         self.BATCH_SAMPLES_DIR_G1 = os.path.join(self.OUTPUT_DIR, "G1/generated_samples/batch")
         self.LOSS_PLOT_DIR_G1 = os.path.join(self.OUTPUT_DIR, "G1/plots")
-        self.G1_MODEL_PATH = os.path.join(self.MODEL_CHECKPOINT_DIR_G1, "g1_best.pth")
+        self.G1_MODEL_PATH = os.path.join(self.BASE_DIR, "best_models/g1_best.pth")
 
         self.BATCH_SIZE_G1 = 10 # 70
         self.BATCH_SIZE_G1_INFERENCE = 128
@@ -88,7 +88,7 @@ class Config:
         self.EPOCH_SAMPLES_DIR_G2 = os.path.join(self.OUTPUT_DIR, "G2/generated_samples/epochs")
         self.BATCH_SAMPLES_DIR_G2 = os.path.join(self.OUTPUT_DIR, "G2/generated_samples/batch")
         self.LOSS_PLOT_DIR_G2 = os.path.join(self.OUTPUT_DIR, "G2/plots")
-        self.G2_MODEL_PATH = os.path.join(self.MODEL_CHECKPOINT_DIR_G2, "g2_best.pth")
+        self.G2_MODEL_PATH = os.path.join(self.BASE_DIR, "best_models/g2_best.pth")
 
         self.BATCH_SIZE_G2 = 128
         self.BATCH_SIZE_G2_INFERENCE = 64
