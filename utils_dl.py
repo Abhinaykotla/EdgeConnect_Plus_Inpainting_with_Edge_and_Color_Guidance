@@ -112,7 +112,7 @@ def gen_raw_mask(input_img):
 
 #     return guidance_img 
 
-def gen_gidance_img(input_img, edge_img, edge_threshold=30, edge_color=(255, 0, 0)):
+def gen_gidance_img(input_img, edge_img, edge_threshold=30, edge_color=(0, 0, 0)):
     """
     Generate a guidance image by:
     1. Using TELEA inpainting on masked regions.

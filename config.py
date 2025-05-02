@@ -78,7 +78,7 @@ class Config:
         self.L1_LOSS_WEIGHT = 1.2
         self.ADV_LOSS_WEIGHT = 2.0
         self.FM_LOSS_WEIGHT = 1.8
-        self.VGG_LOSS_WEIGHT = 0.3
+        self.VGG_LOSS_WEIGHT = 0.25
 
 
         #######################################################################
