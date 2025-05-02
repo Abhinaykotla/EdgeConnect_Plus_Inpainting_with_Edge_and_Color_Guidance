@@ -285,13 +285,13 @@ def save_checkpoint(epoch, g1, d1, optimizer_g, optimizer_d, best_loss, history,
     with open(history_path, "w") as f:
         json.dump({"epochs": history, "batch_losses": batch_losses, "epoch_losses": epoch_losses}, f)
 
-    # Manage old checkpoints (keep only the last 3)
+    # Manage old checkpoints (keep only the last 5)
     manage_checkpoints()
 
 # Function to keep only the last 3 best checkpoints
 def manage_checkpoints():
     checkpoint_files = sorted(glob.glob(os.path.join(CHECKPOINT_DIR, "checkpoint_epoch_*.pth")), key=os.path.getmtime)
-    if len(checkpoint_files) > 3:
+    if len(checkpoint_files) > 5:
         os.remove(checkpoint_files[0])  # Remove the oldest checkpoint
         print(f"🗑️ Deleted old checkpoint: {checkpoint_files[0]}")
 
