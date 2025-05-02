@@ -63,6 +63,28 @@ class EMA:
         self.backup = {}
 
 
+def gradient_penalty(discriminator, input_img, guidance_img, real_img, fake_img):
+    alpha = torch.rand(real_img.size(0), 1, 1, 1, device=config.DEVICE)
+    interpolated = (alpha * real_img + (1 - alpha) * fake_img).detach().requires_grad_(True)
+
+    d_interpolated = discriminator(input_img.detach(), interpolated)
+
+    grad_outputs = torch.ones_like(d_interpolated, device=config.DEVICE)
+
+    gradients = torch.autograd.grad(
+        outputs=d_interpolated,
+        inputs=interpolated,
+        grad_outputs=grad_outputs,
+        create_graph=True,
+        retain_graph=True,
+        only_inputs=True
+    )[0]
+
+    gradients = gradients.view(gradients.size(0), -1)
+    gp = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+    return gp
+
+
 def train_g2_and_d2():
     print("\n🔹 Initializing G2 & D2 Model Training Setup...\n")
 
@@ -90,7 +112,7 @@ def train_g2_and_d2():
 
     best_loss = float("inf")
     history = {"g2_loss": [], "d2_loss": []}
-    batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': []}
+    batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': [], 'D2_GP': []}
     epoch_losses = {'epoch': [], 'G2_Loss': [], 'D2_Loss': []}
 
     # Training Loop
@@ -155,7 +177,8 @@ def train_g2_and_d2():
 
                 d2_real_loss = adversarial_loss(d_real, torch.ones_like(d_real))
                 d2_fake_loss = adversarial_loss(d_fake, torch.zeros_like(d_fake))
-                d_loss = (d2_real_loss + d2_fake_loss) * 0.5
+                gp = gradient_penalty(d2, input_img, guidance_img, gt_img, pred_img.detach())
+                d_loss = (d2_real_loss + d2_fake_loss) * 0.5 + config.GRADIENT_PENALTY_WEIGHT_G2 * gp
 
             scaler.scale(d_loss).backward()
             scaler.step(optimizer_d)
@@ -172,6 +195,7 @@ def train_g2_and_d2():
             batch_losses['G2_Style'].append(g2_style.item())
             batch_losses['D2_Real'].append(d2_real_loss.item())
             batch_losses['D2_Fake'].append(d2_fake_loss.item())
+            batch_losses['D2_GP'].append(gp.item())
 
         # Epoch logging
         avg_g_loss = epoch_g_loss / len(train_loader)
@@ -184,7 +208,7 @@ def train_g2_and_d2():
         history["d2_loss"].append(avg_d_loss)
 
         save_losses_to_json_g2(batch_losses, epoch_losses, config.LOSS_PLOT_DIR_G2)
-        batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': []}
+        batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': [], 'D2_GP': []}
         plot_losses_g2(config.LOSS_PLOT_DIR_G2)
 
         scheduler_g.step()
