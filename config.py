@@ -27,17 +27,17 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         self.NUM_WORKERS = 12
         self.PIN_MEMORY = True
-        self.EPOCHS = 15
+        self.EPOCHS = 30
         self.EARLY_STOP_PATIENCE = 5
         self.IMAGE_SIZE = 256
 
-        self.VALIDATION_SAMPLE_EPOCHS = 10
+        self.VALIDATION_SAMPLE_EPOCHS = 5
         self.TRAINING_SAMPLE_EPOCHS = 1
         self.MAX_BATCH_POINTS = 10000
-        self.BATCH_SAMPLING_SIZE = 218
+        self.BATCH_SAMPLING_SIZE = 2 # 200
 
         self.CANNY_THRESHOLD_LOW = 110
-        self.CANNY_THRESHOLD_HIGH = 195
+        self.CANNY_THRESHOLD_HIGH = 180
         self.OVERRIDE_LR = False
 
         #######################################################################
@@ -67,18 +67,18 @@ class Config:
         self.LOSS_PLOT_DIR_G1 = os.path.join(self.OUTPUT_DIR, "G1/plots")
         self.G1_MODEL_PATH = os.path.join(self.MODEL_CHECKPOINT_DIR_G1, "g1_best.pth")
 
-        self.BATCH_SIZE_G1 = 124
+        self.BATCH_SIZE_G1 = 10 # 70
         self.BATCH_SIZE_G1_INFERENCE = 128
         self.LEARNING_RATE_G1 = 0.00015
-        self.D2G_LR_RATIO_G1 = 0.2
+        self.D2G_LR_RATIO_G1 = 0.17
         self.BETA1 = 0.0
         self.BETA2 = 0.9
         self.WEIGHT_DECAY = 0.00005
 
-        self.L1_LOSS_WEIGHT = 1.2
-        self.ADV_LOSS_WEIGHT = 2.0
-        self.FM_LOSS_WEIGHT = 1.8
-        self.VGG_LOSS_WEIGHT = 0.25
+        self.L1_LOSS_WEIGHT = 1.0
+        self.ADV_LOSS_WEIGHT = 1.4
+        self.FM_LOSS_WEIGHT = 3.0
+        self.VGG_LOSS_WEIGHT = 0.5
 
 
         #######################################################################
