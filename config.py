@@ -36,9 +36,9 @@ class Config:
         self.MAX_BATCH_POINTS = 10000
         self.BATCH_SAMPLING_SIZE = 218
 
-        self.CANNY_THRESHOLD_LOW = 45
-        self.CANNY_THRESHOLD_HIGH = 140
-        self.OVERRIDE_LR = True
+        self.CANNY_THRESHOLD_LOW = 110
+        self.CANNY_THRESHOLD_HIGH = 195
+        self.OVERRIDE_LR = False
 
         #######################################################################
         # DATASET PATHS (you can limit to only train data in Colab)
