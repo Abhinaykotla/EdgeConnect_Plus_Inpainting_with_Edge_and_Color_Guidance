@@ -2,6 +2,7 @@
 
 import time
 import torch
+import torch.nn.functional as F
 from dataloader_g2 import get_dataloader_g2
 from g2_model import InpaintingGeneratorG2, InpaintDiscriminatorG2
 from loss_functions import adversarial_loss, l1_loss, perceptual_loss, style_loss, VGG16FeatureExtractor
@@ -116,6 +117,7 @@ def train_g2_and_d2():
         'batch_idx': [], 
         'G2_L1': [], 
         'G2_Adv': [], 
+        'G2_FM': [],  # Add FM loss tracking
         'G2_Perc': [], 
         'G2_Style': [], 
         'D2_Real': [], 
@@ -130,7 +132,7 @@ def train_g2_and_d2():
 
     # Print loss weights
     print(f"🔹 Loss Weights → L1: {config.L1_LOSS_WEIGHT_G2}, Adv: {config.ADV_LOSS_WEIGHT_G2}, " 
-          f"Perceptual: {config.PERCEPTUAL_LOSS_G2}, Style: {config.STYLE_LOSS_WEIGHT_G2}")
+          f"FM: {config.FM_LOSS_WEIGHT_G2}, Perceptual: {config.PERCEPTUAL_LOSS_G2}, Style: {config.STYLE_LOSS_WEIGHT_G2}")
 
     print("🔹 Checking for old checkpoints\n")
     print("Model Hash before loading:", calculate_model_hash_g2(g2))
@@ -164,12 +166,22 @@ def train_g2_and_d2():
             with torch.amp.autocast(config.DEVICE):
                 pred_img = g2(input_img, guidance_img, mask)
 
+                # Calculate G2 losses
                 g2_l1 = l1_loss(pred_img, gt_img) * config.L1_LOSS_WEIGHT_G2
                 g2_adv = adversarial_loss(d2(input_img, pred_img), torch.ones_like(d2(input_img, pred_img))) * config.ADV_LOSS_WEIGHT_G2
                 g2_perc = perceptual_loss(vgg, pred_img, gt_img) * config.PERCEPTUAL_LOSS_G2
                 g2_style = style_loss(vgg, pred_img, gt_img) * config.STYLE_LOSS_WEIGHT_G2
 
-                g_loss = g2_l1 + g2_adv + g2_perc + g2_style
+                # Feature Matching Loss
+                _, real_features = d2(input_img, gt_img, return_features=True)
+                _, fake_features = d2(input_img, pred_img, return_features=True)
+                g2_fm = 0
+                for real_feat, fake_feat in zip(real_features, fake_features):
+                    g2_fm += F.l1_loss(fake_feat, real_feat.detach())
+                g2_fm = g2_fm * config.FM_LOSS_WEIGHT_G2
+
+                # Total G2 loss
+                g_loss = g2_l1 + g2_adv + g2_fm + g2_perc + g2_style
 
             scaler.scale(g_loss).backward()
             scaler.step(optimizer_g)
@@ -200,6 +212,7 @@ def train_g2_and_d2():
             batch_losses['batch_idx'].append(batch_idx)
             batch_losses['G2_L1'].append(g2_l1.item())
             batch_losses['G2_Adv'].append(g2_adv.item())
+            batch_losses['G2_FM'].append(g2_fm.item())
             batch_losses['G2_Perc'].append(g2_perc.item())
             batch_losses['G2_Style'].append(g2_style.item())
             batch_losses['D2_Real'].append(d2_real_loss.item())
@@ -237,7 +250,7 @@ def train_g2_and_d2():
 
         save_losses_to_json_g2(batch_losses, epoch_losses, config.LOSS_PLOT_DIR_G2)
 
-        batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': [], 'D2_GP': []}
+        batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_FM': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': [], 'D2_GP': []}
         
         plot_losses_g2(config.LOSS_PLOT_DIR_G2)
 
