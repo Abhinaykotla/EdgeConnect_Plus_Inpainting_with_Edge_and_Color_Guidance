@@ -108,39 +108,36 @@ def gen_raw_mask(input_img):
 
 
 def gen_gidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
-     """
-     Generate a guidance image by:
-     1. Using TELEA inpainting on masked regions.
-     2. Overlaying colored edges (e.g., red) across the entire image.
- 
-     Args:
-         input_img (np.ndarray): Masked BGR image (H, W, 3)
-         edge_img (np.ndarray): Grayscale predicted edge image (H, W)
-         edge_threshold (int): Edge threshold for overlay
-         edge_color (tuple): BGR tuple for edge overlay color
- 
-     Returns:
-         np.ndarray: Guidance image ready for G2 input
-     """
-     # Step 1: Generate binary mask from white pixels using provided utility
-     raw_mask = gen_raw_mask(input_img)  # Values: 0 (missing) or 255 (valid)
-     binary_mask = (raw_mask < 10).astype(np.uint8)  # 1 = missing, 0 = known
- 
-     # Step 2: Inpaint the image using TELEA after dilation
-     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-     expanded_mask = cv2.dilate(binary_mask, kernel, iterations=1)
- 
-     inpaint_input = input_img.copy()
-     inpaint_input[expanded_mask == 1] = 0
-     inpainted_color = cv2.inpaint(inpaint_input, expanded_mask * 255, 15, cv2.INPAINT_TELEA)
- 
-     # Step 3: Overlay edge map across the entire image - not just masked regions
-     all_edges = (edge_img == 0)
- 
-     guidance_img = inpainted_color.copy()
-     guidance_img[all_edges] = edge_color
- 
-     return guidance_img
+    """
+    Generate a guidance image by:
+    1. Using TELEA inpainting on masked regions.
+    2. Overlaying colored edges (e.g., red) across the entire image.
+
+    Args:
+        input_img (np.ndarray): Masked BGR image (H, W, 3)
+        edge_img (np.ndarray): Grayscale predicted edge image (H, W)
+        edge_threshold (int): Edge threshold for overlay
+        edge_color (tuple): BGR tuple for edge overlay color
+
+    Returns:
+        np.ndarray: Guidance image ready for G2 input
+    """
+    # Step 1: Generate binary mask from white pixels using provided utility
+    # Step 2: Inpaint the image using TELEA after dilation
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    expanded_mask = cv2.dilate((gen_raw_mask(input_img) < 10).astype(np.uint8), kernel, iterations=1)
+
+    inpaint_input = input_img.copy()
+    inpaint_input[expanded_mask == 1] = 0
+    inpainted_color = cv2.inpaint(inpaint_input, expanded_mask * 255, 15, cv2.INPAINT_TELEA)
+
+    # Step 3: Overlay edge map across the entire image - not just masked regions
+    all_edges = (edge_img == 0)
+
+    guidance_img = inpainted_color.copy()
+    guidance_img[all_edges] = edge_color
+
+    return guidance_img
 
 
 def validate_edge_map(split="train"):
