@@ -27,7 +27,7 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         self.NUM_WORKERS = 12
         self.PIN_MEMORY = True
-        self.EPOCHS = 40
+        self.EPOCHS = 45
         self.EARLY_STOP_PATIENCE = 5
         self.IMAGE_SIZE = 256
 
@@ -38,7 +38,7 @@ class Config:
 
         self.CANNY_THRESHOLD_LOW = 110
         self.CANNY_THRESHOLD_HIGH = 180
-        self.OVERRIDE_LR = False
+        self.OVERRIDE_LR = True
 
         #######################################################################
         # DATASET PATHS (you can limit to only train data in Colab)
@@ -69,15 +69,15 @@ class Config:
 
         self.BATCH_SIZE_G1 = 20 # 70
         self.BATCH_SIZE_G1_INFERENCE = 128
-        self.LEARNING_RATE_G1 = 0.00015
-        self.D2G_LR_RATIO_G1 = 0.17
+        self.LEARNING_RATE_G1 = 0.0001
+        self.D2G_LR_RATIO_G1 = 0.3
         self.BETA1 = 0.0
         self.BETA2 = 0.9
         self.WEIGHT_DECAY = 0.00005
 
         self.L1_LOSS_WEIGHT = 1.0
-        self.ADV_LOSS_WEIGHT = 1.4
-        self.FM_LOSS_WEIGHT = 3.0
+        self.ADV_LOSS_WEIGHT = 2.5
+        self.FM_LOSS_WEIGHT = 2.0
         self.VGG_LOSS_WEIGHT = 0.5
 
 
