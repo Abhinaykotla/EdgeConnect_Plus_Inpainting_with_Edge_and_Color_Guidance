@@ -132,7 +132,7 @@ def gen_gidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
     inpainted_color = cv2.inpaint(inpaint_input, expanded_mask * 255, 15, cv2.INPAINT_TELEA)
 
     # Step 3: Overlay edge map across the entire image - not just masked regions
-    all_edges = (edge_img == 0)
+    all_edges = (edge_img < 30)
 
     guidance_img = inpainted_color.copy()
     guidance_img[all_edges] = edge_color
