@@ -107,49 +107,40 @@ def gen_raw_mask(input_img):
 ####################################################
 
 
-def gen_gidance_img(input_img, edge_img, edge_threshold=30, edge_color=(0, 0, 0), blur_ksize=(7, 7)):
-    """
-    Fast implementation to create guidance images:
-    1. Identify mask (white regions in input image)
-    2. Inpaint the masked regions
-    3. Blur the inpainted image
-    4. Overlay the edges from edge_img
-    5. Copy the result only where the mask is present
-
-    Args:
-        input_img: Input image with white masks
-        edge_img: Grayscale edge prediction 
-        edge_threshold: Threshold for edge detection
-        edge_color: BGR color to draw edges
-        blur_ksize: Kernel size for Gaussian blur
-
-    Returns:
-        Guidance image with inpainted+blurred content only in masked regions
-    """
-    # Create a copy to avoid modifying the original
-    guidance_img = input_img.copy()
-    
-    # Step 1: Generate binary mask from white regions (1 where mask exists)
-    mask = np.all(input_img > 245, axis=-1).astype(np.uint8)
-    
-    # Step 2: Inpaint using faster NS method instead of TELEA
-    inpainted = cv2.inpaint(input_img, mask * 255, 5, cv2.INPAINT_NS)
-    
-    # Step 3: Apply blur only to the inpainted image
-    blurred = cv2.GaussianBlur(inpainted, blur_ksize, 0)
-    
-    # Step 4: Overlay edges on the blurred image
-    # Find edge positions above threshold
-    edge_positions = edge_img < edge_threshold  # Edges are dark in edge_img
-    
-    # Apply edges only within mask regions
-    masked_edge_positions = np.logical_and(mask == 1, edge_positions)
-    blurred[masked_edge_positions] = edge_color
-    
-    # Step 5: Copy the processed content only where the mask is present
-    guidance_img[mask == 1] = blurred[mask == 1]
-    
-    return guidance_img
+def gen_gidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
+     """
+     Generate a guidance image by:
+     1. Using TELEA inpainting on masked regions.
+     2. Overlaying colored edges (e.g., red) across the entire image.
+ 
+     Args:
+         input_img (np.ndarray): Masked BGR image (H, W, 3)
+         edge_img (np.ndarray): Grayscale predicted edge image (H, W)
+         edge_threshold (int): Edge threshold for overlay
+         edge_color (tuple): BGR tuple for edge overlay color
+ 
+     Returns:
+         np.ndarray: Guidance image ready for G2 input
+     """
+     # Step 1: Generate binary mask from white pixels using provided utility
+     raw_mask = gen_raw_mask(input_img)  # Values: 0 (missing) or 255 (valid)
+     binary_mask = (raw_mask < 10).astype(np.uint8)  # 1 = missing, 0 = known
+ 
+     # Step 2: Inpaint the image using TELEA after dilation
+     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+     expanded_mask = cv2.dilate(binary_mask, kernel, iterations=1)
+ 
+     inpaint_input = input_img.copy()
+     inpaint_input[expanded_mask == 1] = 0
+     inpainted_color = cv2.inpaint(inpaint_input, expanded_mask * 255, 15, cv2.INPAINT_TELEA)
+ 
+     # Step 3: Overlay edge map across the entire image - not just masked regions
+     all_edges = (edge_img == 0)
+ 
+     guidance_img = inpainted_color.copy()
+     guidance_img[all_edges] = edge_color
+ 
+     return guidance_img
 
 
 def validate_edge_map(split="train"):
