@@ -27,7 +27,7 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         self.NUM_WORKERS = 12
         self.PIN_MEMORY = True
-        self.EPOCHS = 30
+        self.EPOCHS = 40
         self.EARLY_STOP_PATIENCE = 5
         self.IMAGE_SIZE = 256
 
