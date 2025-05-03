@@ -87,6 +87,17 @@ class InpaintDiscriminatorG2(nn.Module):
             nn.utils.spectral_norm(nn.Conv2d(512, 1, kernel_size=4, stride=1, padding=1))  # → [B, 1, 30, 30]
         )
 
-    def forward(self, input_img, gen_or_gt_img):
+    def forward(self, input_img, gen_or_gt_img, return_features=False):
         x = torch.cat((input_img, gen_or_gt_img), dim=1)  # (B, 6, H, W)
-        return self.model(x)
+        features = []
+
+        # Pass through each layer and collect intermediate features
+        for module in self.model:
+            x = module(x)
+            if return_features:
+                features.append(x)
+
+        if return_features:
+            return x, features  # Return final output and intermediate features
+        else:
+            return x  # Return only the final output

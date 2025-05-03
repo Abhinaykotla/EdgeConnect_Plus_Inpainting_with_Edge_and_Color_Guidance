@@ -34,7 +34,7 @@ class Config:
         self.VALIDATION_SAMPLE_EPOCHS = 5
         self.TRAINING_SAMPLE_EPOCHS = 1
         self.MAX_BATCH_POINTS = 10000
-        self.BATCH_SAMPLING_SIZE = 2 # 200
+        self.BATCH_SAMPLING_SIZE = 15 # 200
 
         self.CANNY_THRESHOLD_LOW = 110
         self.CANNY_THRESHOLD_HIGH = 180
@@ -67,7 +67,7 @@ class Config:
         self.LOSS_PLOT_DIR_G1 = os.path.join(self.OUTPUT_DIR, "G1/plots")
         self.G1_MODEL_PATH = os.path.join(self.BASE_DIR, "best_models/g1_best.pth")
 
-        self.BATCH_SIZE_G1 = 10 # 70
+        self.BATCH_SIZE_G1 = 20 # 70
         self.BATCH_SIZE_G1_INFERENCE = 128
         self.LEARNING_RATE_G1 = 0.00015
         self.D2G_LR_RATIO_G1 = 0.17
@@ -90,18 +90,20 @@ class Config:
         self.LOSS_PLOT_DIR_G2 = os.path.join(self.OUTPUT_DIR, "G2/plots")
         self.G2_MODEL_PATH = os.path.join(self.BASE_DIR, "best_models/g2_best.pth")
 
-        self.BATCH_SIZE_G2 = 128
+        self.BATCH_SIZE_G2 = 20
         self.BATCH_SIZE_G2_INFERENCE = 64
         self.LEARNING_RATE_G2 = 0.0001
         self.D2G_LR_RATIO_G2 = 0.02
         self.BETA1_G2 = 0.0
         self.BETA2_G2 = 0.9
         self.WEIGHT_DECAY_G2 = 0.00005
+        self.GRADIENT_PENALTY_WEIGHT_G2 = 0.3
 
         self.L1_LOSS_WEIGHT_G2 = 1.0
         self.ADV_LOSS_WEIGHT_G2 = 0.1
         self.PERCEPTUAL_LOSS_G2 = 5.5
-        self.STYLE_LOSS_WEIGHT_G2 = 120
+        self.STYLE_LOSS_WEIGHT_G2 = 3
+        self.FM_LOSS_WEIGHT_G2 = 0.5
 
 
 # Global config instance

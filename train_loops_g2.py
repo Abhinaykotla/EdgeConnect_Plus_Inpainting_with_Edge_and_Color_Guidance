@@ -62,7 +62,7 @@ class EMA:
                 param.data = self.backup[name]
         self.backup = {}
 
-  
+
 def gradient_penalty(discriminator, input_img, guidance_img, real_img, fake_img):
     alpha = torch.rand(real_img.size(0), 1, 1, 1, device=config.DEVICE)
     interpolated = (alpha * real_img + (1 - alpha) * fake_img).detach().requires_grad_(True)
@@ -112,12 +112,21 @@ def train_g2_and_d2():
 
     best_loss = float("inf")
     history = {"g2_loss": [], "d2_loss": []}
-    batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': [], 'D2_GP': []}
+    batch_losses = {
+        'batch_idx': [], 
+        'G2_L1': [], 
+        'G2_Adv': [], 
+        'G2_Perc': [], 
+        'G2_Style': [], 
+        'D2_Real': [], 
+        'D2_Fake': [], 
+        'D2_GP': []
+    }
     epoch_losses = {'epoch': [], 'G2_Loss': [], 'D2_Loss': []}
 
     # Training Loop
     num_epochs = config.EPOCHS
-    print(f"🔹 Training for a max of {num_epochs} Epochs on {config.DEVICE} with early stopping patience of {config.EARLY_STOP_PATIENCE_G2} ...\n")
+    print(f"🔹 Training for a max of {num_epochs} Epochs on {config.DEVICE} with early stopping patience of {config.EARLY_STOP_PATIENCE} ...\n")
 
     # Print loss weights
     print(f"🔹 Loss Weights → L1: {config.L1_LOSS_WEIGHT_G2}, Adv: {config.ADV_LOSS_WEIGHT_G2}, " 
@@ -132,7 +141,7 @@ def train_g2_and_d2():
     print("Model Hash after loading:", calculate_model_hash_g2(g2))
 
     # Early Stopping Parameters
-    patience = config.EARLY_STOP_PATIENCE_G2
+    patience = config.EARLY_STOP_PATIENCE
     epochs_no_improve = 0
 
     start_time = time.time()
@@ -195,6 +204,9 @@ def train_g2_and_d2():
             batch_losses['G2_Style'].append(g2_style.item())
             batch_losses['D2_Real'].append(d2_real_loss.item())
             batch_losses['D2_Fake'].append(d2_fake_loss.item())
+            
+            if 'D2_GP' not in batch_losses:
+                batch_losses['D2_GP'] = []
             batch_losses['D2_GP'].append(gp.item())
 
             # Add within batch loop in G2:
@@ -207,8 +219,11 @@ def train_g2_and_d2():
                 g2.eval()
                 with torch.no_grad():
                     pred_img_ema = g2(input_img, guidance_img, mask)
-                save_generated_images_g2(epoch, input_img, mask, gt_img, guidance_img, pred_img_ema, mode="train", batch_idx=batch_idx+1)
+                save_generated_images_g2(epoch, input_img, guidance_img, mask, gt_img, pred_img_ema, mode="train", batch_idx=batch_idx+1)
                 g2_ema.restore()
+
+        scheduler_g.step()
+        scheduler_d.step()
 
         # Epoch logging
         avg_g_loss = epoch_g_loss / len(train_loader)
@@ -221,11 +236,11 @@ def train_g2_and_d2():
         history["d2_loss"].append(avg_d_loss)
 
         save_losses_to_json_g2(batch_losses, epoch_losses, config.LOSS_PLOT_DIR_G2)
+
         batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': [], 'D2_GP': []}
+        
         plot_losses_g2(config.LOSS_PLOT_DIR_G2)
 
-        scheduler_g.step()
-        scheduler_d.step()
 
         if avg_g_loss < best_loss:
             best_loss = avg_g_loss
