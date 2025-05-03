@@ -39,6 +39,7 @@ class Config:
         self.CANNY_THRESHOLD_LOW = 110
         self.CANNY_THRESHOLD_HIGH = 180
         self.OVERRIDE_LR = True
+        self.MAX_CHECKPOINTS = 10
 
         #######################################################################
         # DATASET PATHS (you can limit to only train data in Colab)
