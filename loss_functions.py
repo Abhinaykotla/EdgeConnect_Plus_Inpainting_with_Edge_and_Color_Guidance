@@ -6,8 +6,23 @@ import torchvision.models as models
 def adversarial_loss(pred, target):
     return F.binary_cross_entropy_with_logits(pred, target)
 
-def feature_matching_loss(disc_real, disc_fake):
-    return torch.mean(torch.abs(disc_real - disc_fake))
+def feature_matching_loss(real_features, fake_features):
+    """
+    Compute feature matching loss between real and fake feature maps
+    
+    Args:
+        real_features: Either a single tensor or list of feature maps
+        fake_features: Either a single tensor or list of feature maps
+    """
+    # Handle single tensor case (for G1)
+    if not isinstance(real_features, list) and not isinstance(fake_features, list):
+        return torch.mean(torch.abs(real_features - fake_features))
+    
+    # Handle list of features case (for G2)
+    loss = 0
+    for real_feat, fake_feat in zip(real_features, fake_features):
+        loss += F.l1_loss(fake_feat, real_feat.detach())
+    return loss
 
 def l1_loss(pred, target):
     return F.l1_loss(pred, target)

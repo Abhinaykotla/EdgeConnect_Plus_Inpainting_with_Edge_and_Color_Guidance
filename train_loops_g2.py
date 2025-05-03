@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from dataloader_g2 import get_dataloader_g2
 from g2_model import InpaintingGeneratorG2, InpaintDiscriminatorG2
-from loss_functions import adversarial_loss, l1_loss, perceptual_loss, style_loss, VGG16FeatureExtractor
+from loss_functions import adversarial_loss, l1_loss, perceptual_loss, style_loss, feature_matching_loss,VGG16FeatureExtractor
 from utils_g2 import (
     save_checkpoint_g2, 
     load_checkpoint_g2, 
@@ -172,13 +172,11 @@ def train_g2_and_d2():
                 g2_perc = perceptual_loss(vgg, pred_img, gt_img) * config.PERCEPTUAL_LOSS_G2
                 g2_style = style_loss(vgg, pred_img, gt_img) * config.STYLE_LOSS_WEIGHT_G2
 
-                # Feature Matching Loss
-                _, real_features = d2(input_img, gt_img, return_features=True)
-                _, fake_features = d2(input_img, pred_img, return_features=True)
-                g2_fm = 0
-                for real_feat, fake_feat in zip(real_features, fake_features):
-                    g2_fm += F.l1_loss(fake_feat, real_feat.detach())
-                g2_fm = g2_fm * config.FM_LOSS_WEIGHT_G2
+                # Feature Matching Loss - Fixed implementation
+                # Extract features from discriminator for real and fake images
+                real_features = d2.get_features(input_img, gt_img)
+                fake_features = d2.get_features(input_img, pred_img)
+                g2_fm = feature_matching_loss(real_features, fake_features) * config.FM_LOSS_WEIGHT_G2
 
                 # Total G2 loss
                 g_loss = g2_l1 + g2_adv + g2_fm + g2_perc + g2_style
@@ -274,8 +272,15 @@ def train_g2_and_d2():
                 pred_img = g2(samples["input_img"].to(config.DEVICE),
                               samples["guidance_img"].to(config.DEVICE),
                               samples["mask"].to(config.DEVICE))
-                save_generated_images_g2(epoch, samples["input_img"], samples["mask"], samples["gt_img"],
-                                         samples["guidance_img"], pred_img, mode="train")
+                save_generated_images_g2(
+                    epoch, 
+                    samples["input_img"],  # Input image
+                    samples["guidance_img"],  # Guidance image
+                    samples["mask"],  # Mask
+                    samples["gt_img"],  # Ground truth
+                    pred_img,  # Predicted image
+                    mode="train"
+                )
             g2_ema.restore()
 
         if epoch % config.VALIDATION_SAMPLE_EPOCHS == 0:

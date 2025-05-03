@@ -87,6 +87,21 @@ class InpaintDiscriminatorG2(nn.Module):
             nn.utils.spectral_norm(nn.Conv2d(512, 1, kernel_size=4, stride=1, padding=1))  # → [B, 1, 30, 30]
         )
 
+    def get_features(self, input_img, image):
+        """Extract and return intermediate features for feature matching loss"""
+        # Concatenate input image and target/generated image
+        x = torch.cat([input_img, image], dim=1)
+        features = []
+        
+        # Store intermediate layer outputs
+        for i, layer in enumerate(self.model):
+            x = layer(x)
+            # Store features from some layers (adjust as needed)
+            if i % 2 == 0 and i > 0:  # Store every other layer after the first
+                features.append(x)
+                
+        return features
+
     def forward(self, input_img, gen_or_gt_img, return_features=False):
         x = torch.cat((input_img, gen_or_gt_img), dim=1)  # (B, 6, H, W)
         features = []

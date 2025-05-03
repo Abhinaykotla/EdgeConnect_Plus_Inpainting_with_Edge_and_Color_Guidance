@@ -161,7 +161,6 @@ def plot_losses_g2(save_dir):
     plt.tight_layout()
     latest_epoch = epoch_losses["epoch"][-1] if epoch_losses["epoch"] else "0"
     plt.savefig(os.path.join(save_dir, f'loss_trends_epoch_{latest_epoch}.png'))
-    plt.savefig(os.path.join(save_dir, 'loss_trends_latest.png')) # Always overwrite this one for the latest view
     plt.close()
 
 def save_generated_images_g2(epoch, masked_input, guidance, masks, gt_images, pred_images, save_dir=None, mode="train", batch_idx=None):
