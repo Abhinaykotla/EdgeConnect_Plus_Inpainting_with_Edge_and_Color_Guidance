@@ -224,24 +224,24 @@ def validate_guidance_images(split="train"):
     # Get list of input and guidance images
     input_path = Path(input_dir)
     guidance_path = Path(guidance_dir)
-    input_files = sorted([f.name for f in input_path.glob("*.jpg")])
-    guidance_files = sorted([f.name for f in guidance_path.glob("*.jpg")])
     
-    # Check if numbers match
-    if len(input_files) != len(guidance_files):
-        print(f"Mismatch in number of images: {len(input_files)} input images vs {len(guidance_files)} guidance images.")
-        print("Generating missing guidance images...")
+    # Use sets for faster membership testing
+    input_basenames = {os.path.splitext(f.name)[0] for f in input_path.glob("*.jpg")}
+    guidance_basenames = {os.path.splitext(f.name)[0] for f in guidance_path.glob("*.jpg")}
+    
+    # First check: Count comparison
+    if len(input_basenames) != len(guidance_basenames):
+        print(f"Count mismatch: {len(input_basenames)} input images vs {len(guidance_basenames)} guidance images.")
+        print("Generating guidance images...")
         _generate_guidance_images(split=split)
         return False
     
-    # # Check if each input has a corresponding guidance image
-    # for input_file in input_files:
-    #     basename = os.path.splitext(input_file)[0]
-    #     expected_guidance_file = f"{basename}.jpg"
-    #     if expected_guidance_file not in guidance_files:
-    #         print(f"Missing guidance image for {input_file}. Generating guidance images...")
-    #         _generate_guidance_images(split=split)
-    #         return False
+    # Second check: Name existence
+    if not input_basenames.issubset(guidance_basenames):
+        print("Some input images don't have corresponding guidance images.")
+        print("Generating guidance images...")
+        _generate_guidance_images(split=split)
+        return False
     
     print("All guidance images exist.")
     return True
