@@ -5,6 +5,7 @@ __pycache__/
 *.png
 data_archive/*.zip
 data_archive/**/*.zip
+outputs/stash/
 *.pth
 *.tar
 *.gz
