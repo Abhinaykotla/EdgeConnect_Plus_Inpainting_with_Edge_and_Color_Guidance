@@ -113,8 +113,16 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE_G2, shuffle=Tr
     Returns:
         DataLoader: PyTorch DataLoader for the G2 dataset.
     """
-    # First, validate guidance images
-    validate_guidance_images(split)
+    # First, validate guidance images - this will generate them if needed
+    successful = validate_guidance_images(split)
+    
+    # If validation wasn't successful, it means images are still being generated
+    # or there was an error. Make sure they're generated before continuing.
+    if not successful:
+        print("Waiting for guidance images to be available...")
+        # Give some time for the images to be generated
+        import time
+        time.sleep(10)
     
     # Use dictionary mapping for more efficient directory selection
     dataset_paths = {
