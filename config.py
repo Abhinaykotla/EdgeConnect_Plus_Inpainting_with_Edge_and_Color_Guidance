@@ -47,17 +47,17 @@ class Config:
         self.TRAIN_IMAGES_GT = os.path.join(self.BASE_DIR, "data_archive/CelebA/train_gt")
         self.TRAIN_IMAGES_INPUT = os.path.join(self.BASE_DIR, "data_archive/CelebA/train_input")
         self.TRAIN_EDGE_DIR = os.path.join(self.BASE_DIR, "data_archive/CelebA/edge_maps/train")
-        self.TRAIN_GUIDANCE_DIR = os.path.join(self.BASE_DIR, "data_archive/CelebA/guidance/train")
+        self.TRAIN_GUIDANCE_DIR = os.path.join(self.BASE_DIR, "data_archive/CelebA/train_guidance")
 
         self.TEST_IMAGES_GT = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/test_gt")
         self.TEST_IMAGES_INPUT = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/test_input")
         self.TEST_EDGE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/edge_maps/test")
-        self.TEST_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/guidance/test")
+        self.TEST_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/test_guidance")
 
         self.VAL_IMAGES_GT = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/val_gt")
         self.VAL_IMAGES_INPUT = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/val_input")
         self.VAL_EDGE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/edge_maps/val")
-        self.VAL_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/guidance/val")
+        self.VAL_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/val_guidance")
 
         #######################################################################
         # G1 MODEL CONFIGURATIONS
