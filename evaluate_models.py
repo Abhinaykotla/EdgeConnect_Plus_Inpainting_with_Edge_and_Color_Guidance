@@ -100,7 +100,7 @@ with torch.no_grad():
 
 # Save metrics
 df = pd.DataFrame(metrics_list)
-csv_path = os.path.join(config.EVAL_RESULTS_DIR, "g2_evaluation_metrics.csv")
+csv_path = os.path.join(config.EVAL_RESULTS_DIR, "evaluation_metrics.csv")
 df.to_csv(csv_path, index=False)
 print(f"📊 Metrics saved to {csv_path}")
 
