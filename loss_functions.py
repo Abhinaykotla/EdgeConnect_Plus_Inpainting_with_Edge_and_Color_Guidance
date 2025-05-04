@@ -60,7 +60,9 @@ def gram_matrix(feat):
     (b, c, h, w) = feat.size()
     feat = feat.view(b, c, h * w)
     gram = torch.bmm(feat, feat.transpose(1, 2))  # (B, C, C)
-    return gram / (c * h * w)
+    # Add a small epsilon to avoid division by zero
+    divisor = c * h * w + 1e-8
+    return gram / divisor
 
 def style_loss(vgg, gen_img, gt_img):
     gen_features = vgg(gen_img)

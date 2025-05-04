@@ -278,7 +278,7 @@ def train_g1_and_d1():
         plot_losses(config.LOSS_PLOT_DIR_G1)
 
         # Save best model checkpoint if G1 loss improves
-        if avg_g1_loss*0.5 < best_g1_loss :
+        if avg_g1_loss < best_g1_loss :
             best_g1_loss = avg_g1_loss
             # Apply EMA weights for saving the best model
             g1_ema.apply_shadow()

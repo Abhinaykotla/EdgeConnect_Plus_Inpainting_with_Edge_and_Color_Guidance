@@ -100,8 +100,8 @@ def train_g2_and_d2():
     optimizer_d = torch.optim.Adam(d2.parameters(), lr=config.LEARNING_RATE_G2 * config.D2G_LR_RATIO_G2,
                                    betas=(config.BETA1_G2, config.BETA2_G2), weight_decay=config.WEIGHT_DECAY_G2)
 
-    scheduler_g = torch.optim.lr_scheduler.StepLR(optimizer_g, step_size=10, gamma=0.9)
-    scheduler_d = torch.optim.lr_scheduler.StepLR(optimizer_d, step_size=10, gamma=0.9)
+    scheduler_g = torch.optim.lr_scheduler.StepLR(optimizer_g, step_size=5, gamma=0.9)
+    scheduler_d = torch.optim.lr_scheduler.StepLR(optimizer_d, step_size=5, gamma=0.9)
 
     # Use Mixed Precision for Faster Training
     scaler = torch.amp.GradScaler(device=config.DEVICE)
@@ -171,6 +171,15 @@ def train_g2_and_d2():
                 g2_adv = adversarial_loss(d2(input_img, pred_img), torch.ones_like(d2(input_img, pred_img))) * config.ADV_LOSS_WEIGHT_G2
                 g2_perc = perceptual_loss(vgg, pred_img, gt_img) * config.PERCEPTUAL_LOSS_G2
                 g2_style = style_loss(vgg, pred_img, gt_img) * config.STYLE_LOSS_WEIGHT_G2
+
+                # Add this after style loss calculation to check for NaNs
+                if torch.isnan(g2_style):
+                    print("WARNING: NaN detected in style loss")
+                    # Provide more details about the inputs
+                    print(f"pred_img stats: min={pred_img.min().item()}, max={pred_img.max().item()}")
+                    print(f"gt_img stats: min={gt_img.min().item()}, max={gt_img.max().item()}")
+                    # Use a small default value instead of NaN
+                    g2_style = torch.tensor(0.0, device=config.DEVICE)
 
                 # Feature Matching Loss - Fixed implementation
                 # Extract features from discriminator for real and fake images

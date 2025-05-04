@@ -132,7 +132,7 @@ def gen_gidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
     inpainted_color = cv2.inpaint(inpaint_input, expanded_mask * 255, 15, cv2.INPAINT_TELEA)
 
     # Step 3: Overlay edge map across the entire image - not just masked regions
-    all_edges = (edge_img < 30)
+    all_edges = (edge_img < 150)
 
     guidance_img = inpainted_color.copy()
     guidance_img[all_edges] = edge_color
@@ -258,7 +258,7 @@ def _clear_folder(folder_path):
     print(f"Cleared folder: {folder_path}")
 
 
-def _generate_edge_maps(split="train", batch_size=32):
+def _generate_edge_maps(split="train", batch_size=config.BATCH_SIZE_G1_INFERENCE):
     """
     Generates edge maps for all input images in batches and saves them in the edge folder.
     """
@@ -295,7 +295,7 @@ def _generate_edge_maps(split="train", batch_size=32):
     model.to(config.DEVICE)  # Move the model to the specified device (e.g., GPU)
 
     # Initialize the dataloader with use_gt=False and filenames=True
-    dataloader = get_dataloader_g1(split=split, use_mask=True, use_gt=False, return_filenames=True)
+    dataloader = get_dataloader_g1(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE ,use_mask=True, use_gt=False, return_filenames=True)
 
     # Process images in batches
     for batch_idx, batch in enumerate(dataloader):
