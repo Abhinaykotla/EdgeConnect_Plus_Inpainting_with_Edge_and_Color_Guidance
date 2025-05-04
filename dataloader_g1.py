@@ -101,7 +101,7 @@ def get_dataloader_g1(split="train", batch_size=config.BATCH_SIZE_G1, shuffle=Tr
     Initializes the DataLoader for EdgeConnect+ G1 (Edge Generator).
 
     Args:
-        split (str): Dataset split to use ('train', 'test', or 'val').
+        split (str): Dataset split to use ('train', 'test', 'val', or 'demo').
         batch_size (int, optional): Batch size for the dataloader. Defaults to config value.
         shuffle (bool): Whether to shuffle the data. Defaults to True.
         use_mask (bool): Whether to include the mask as input.
@@ -114,11 +114,12 @@ def get_dataloader_g1(split="train", batch_size=config.BATCH_SIZE_G1, shuffle=Tr
     dataset_paths = {
         "train": (config.TRAIN_IMAGES_INPUT, config.TRAIN_IMAGES_GT),
         "test": (config.TEST_IMAGES_INPUT, config.TEST_IMAGES_GT),
-        "val": (config.VAL_IMAGES_INPUT, config.VAL_IMAGES_GT)
+        "val": (config.VAL_IMAGES_INPUT, config.VAL_IMAGES_GT),
+        "demo": (config.DEMO_IMAGES_INPUT, config.DEMO_IMAGES_GT)
     }
     
     if split not in dataset_paths:
-        raise ValueError("Invalid dataset split. Choose from 'train', 'test', or 'val'.")
+        raise ValueError("Invalid dataset split. Choose from 'train', 'test', 'val', or 'demo'.")
     
     input_path, gt_path = dataset_paths[split]
     dataset = EdgeConnectDataset_G1(

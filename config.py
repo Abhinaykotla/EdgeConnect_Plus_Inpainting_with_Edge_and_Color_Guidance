@@ -59,6 +59,11 @@ class Config:
         self.VAL_EDGE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/edge_maps/val")
         self.VAL_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/val_guidance")
 
+        self.DEMO_IMAGES_INPUT = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/input")
+        self.DEMO_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/guidance")
+        self.DEMO_IMAGES_GT = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/gt")
+        self.DEMO_EDGE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/edge_maps")
+
         self.EVAL_RESULTS_DIR = os.path.join(self.OUTPUT_DIR, "eval_results")
 
         #######################################################################
