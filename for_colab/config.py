@@ -27,7 +27,7 @@ class Config:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         self.NUM_WORKERS = 12
         self.PIN_MEMORY = True
-        self.EPOCHS = 10
+        self.EPOCHS = 45
         self.EARLY_STOP_PATIENCE = 5
         self.IMAGE_SIZE = 256
 
@@ -59,6 +59,12 @@ class Config:
         self.VAL_EDGE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/edge_maps/val")
         self.VAL_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/val_guidance")
 
+        self.DEMO_IMAGES_INPUT = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/input")
+        self.DEMO_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/guidance")
+        self.DEMO_IMAGES_GT = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/gt")
+        self.DEMO_EDGE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/edge_maps")
+        self.DEMO_RESULTS_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/demo_results")
+
         self.EVAL_RESULTS_DIR = os.path.join(self.OUTPUT_DIR, "eval_results")
 
         #######################################################################
@@ -73,7 +79,7 @@ class Config:
         self.BATCH_SIZE_G1 = 70
         self.BATCH_SIZE_G1_INFERENCE = 94
         self.LEARNING_RATE_G1 = 0.0001
-        self.D2G_LR_RATIO_G1 = 0.3
+        self.D2G_LR_RATIO_G1 = 0.5
         self.BETA1 = 0.0
         self.BETA2 = 0.9
         self.WEIGHT_DECAY = 0.00005
@@ -93,7 +99,7 @@ class Config:
         self.LOSS_PLOT_DIR_G2 = os.path.join(self.OUTPUT_DIR, "G2/plots")
         self.G2_MODEL_PATH = os.path.join(self.BASE_DIR, "best_models/g2_best.pth")
 
-        self.BATCH_SIZE_G2 = 66
+        self.BATCH_SIZE_G2 = 68
         self.BATCH_SIZE_G2_INFERENCE = 64
         self.LEARNING_RATE_G2 = 0.0001
         self.D2G_LR_RATIO_G2 = 0.5
