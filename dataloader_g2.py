@@ -99,7 +99,7 @@ class EdgeConnectDataset_G2(Dataset):
         return result
 
 
-def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True, use_gt=True):
+def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE_G2, shuffle=True, use_gt=True):
     """
     Returns a DataLoader for the G2 dataset based on the specified split.
     Validates and generates guidance images if needed.
@@ -113,8 +113,16 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True,
     Returns:
         DataLoader: PyTorch DataLoader for the G2 dataset.
     """
-    # First, validate guidance images
-    validate_guidance_images(split)
+    # First, validate guidance images - this will generate them if needed
+    successful = validate_guidance_images(split)
+    
+    # If validation wasn't successful, it means images are still being generated
+    # or there was an error. Make sure they're generated before continuing.
+    if not successful:
+        print("Waiting for guidance images to be available...")
+        # Give some time for the images to be generated
+        import time
+        time.sleep(10)
     
     # Use dictionary mapping for more efficient directory selection
     dataset_paths = {
@@ -140,7 +148,7 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True,
     # Return the DataLoader
     return DataLoader(
         dataset,
-        batch_size=batch_size or config.BATCH_SIZE,
+        batch_size=batch_size or config.BATCH_SIZE_G2,
         shuffle=shuffle,
         num_workers=config.NUM_WORKERS,
         pin_memory=config.PIN_MEMORY,
@@ -150,7 +158,7 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE, shuffle=True,
 
 if __name__ == '__main__':
 
-    train_loader = get_dataloader_g2(split="val")
+    train_loader = get_dataloader_g2(split="train")
 
     for batch in train_loader:
         input_img = batch["input_img"]

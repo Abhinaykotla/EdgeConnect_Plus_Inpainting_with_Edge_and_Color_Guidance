@@ -4,6 +4,7 @@ import torch
 import numpy as np
 from config import config
 from pathlib import Path
+from g1_model import EdgeGenerator
 
 
 def apply_canny(image):
@@ -34,8 +35,8 @@ def dilate_mask(mask, kernel_size=5, iterations=1):
     
     Args:
         mask: Input mask tensor or numpy array. Should be in format where:
-              0 = missing pixels (value < 10)
-              255 = known pixels (value >= 10)
+            0 = missing pixels (value < 10)
+            255 = known pixels (value >= 10)
         kernel_size: Size of dilation kernel
         iterations: Number of dilation iterations
     
@@ -105,11 +106,39 @@ def gen_raw_mask(input_img):
 # G2 dataloader functions
 ####################################################
 
-def gen_gidance_img(input_img, edge_img):
 
-    guidance_img = input_img.copy()
+def gen_guidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
+    """
+    Generate a guidance image by:
+    1. Using TELEA inpainting on masked regions.
+    2. Overlaying colored edges (e.g., red) across the entire image.
+
+    Args:
+        input_img (np.ndarray): Masked BGR image (H, W, 3)
+        edge_img (np.ndarray): Grayscale predicted edge image (H, W)
+        edge_threshold (int): Edge threshold for overlay
+        edge_color (tuple): BGR tuple for edge overlay color
+
+    Returns:
+        np.ndarray: Guidance image ready for G2 input
+    """
+    # Step 1: Generate binary mask from white pixels using provided utility
+    # Step 2: Inpaint the image using TELEA after dilation
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    expanded_mask = cv2.dilate((gen_raw_mask(input_img) < 10).astype(np.uint8), kernel, iterations=1)
+
+    inpaint_input = input_img.copy()
+    inpaint_input[expanded_mask == 1] = 0
+    inpainted_color = cv2.inpaint(inpaint_input, expanded_mask * 255, 15, cv2.INPAINT_TELEA)
+
+    # Step 3: Overlay edge map across the entire image - not just masked regions
+    all_edges = (edge_img < 150)
+
+    guidance_img = inpainted_color.copy()
+    guidance_img[all_edges] = edge_color
 
     return guidance_img
+
 
 def validate_edge_map(split="train"):
     """
@@ -147,7 +176,7 @@ def validate_edge_map(split="train"):
         print(f"Mismatch in number of images: {len(input_files)} input images vs {len(edge_files)} edge images.")
         print("Clearing edge folder and regenerating edge maps...")
         _clear_folder(edge_dir)
-        _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE)
+        _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE)
         return False
 
     # Check if all input images have corresponding edge maps
@@ -157,7 +186,7 @@ def validate_edge_map(split="train"):
         if expected_edge_file not in edge_files:
             print(f"Missing edge map for {input_file.name}. Clearing edge folder and regenerating edge maps...")
             _clear_folder(edge_dir)
-            _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE)
+            _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE)
             return False
 
     print("Number of images and corresponding edge maps match.")
@@ -229,7 +258,7 @@ def _clear_folder(folder_path):
     print(f"Cleared folder: {folder_path}")
 
 
-def _generate_edge_maps(split="train", batch_size=32):
+def _generate_edge_maps(split="train", batch_size=config.BATCH_SIZE_G1_INFERENCE):
     """
     Generates edge maps for all input images in batches and saves them in the edge folder.
     """
@@ -254,8 +283,7 @@ def _generate_edge_maps(split="train", batch_size=32):
     checkpoint = torch.load(checkpoint_path, map_location=config.DEVICE)
 
     # Initialize the model architecture
-    from g1_model import EdgeGenerator  # Replace with your actual model class
-    model = EdgeGenerator()  # Initialize the model
+    model = EdgeGenerator()
 
     # Check if the checkpoint contains a full dictionary or just the state_dict
     if "g1_state_dict" in checkpoint:
@@ -267,7 +295,7 @@ def _generate_edge_maps(split="train", batch_size=32):
     model.to(config.DEVICE)  # Move the model to the specified device (e.g., GPU)
 
     # Initialize the dataloader with use_gt=False and filenames=True
-    dataloader = get_dataloader_g1(split=split, use_mask=True, use_gt=False, return_filenames=True)
+    dataloader = get_dataloader_g1(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE ,use_mask=True, use_gt=False, return_filenames=True)
 
     # Process images in batches
     for batch_idx, batch in enumerate(dataloader):
@@ -294,19 +322,66 @@ def _generate_edge_maps(split="train", batch_size=32):
                 edge_path = os.path.join(edge_dir, f"edge_map_{batch_idx * batch_size + j}.jpg")
 
             cv2.imwrite(edge_path, edge_map)
-
-        print(f"Processed batch {batch_idx + 1}/{len(dataloader)}")
+        
+        if batch_idx % 10 == 0:
+            print(f"Processed batch {batch_idx + 1}/{len(dataloader)}")
 
     print(f"Generated edge maps for all input images in {edge_dir}.")
+    
+    # Clean up GPU memory
+    model.cpu()
+    del model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
 
-def _generate_guidance_images(split="train"):
+def _process_single_guidance_image(args):
     """
-    Generates guidance images for all input images based on edge maps.
+    Process a single image for guidance generation.
+    
+    Args:
+        args: Tuple containing (file, input_dir, edge_dir, guidance_dir)
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    file, input_dir, edge_dir, guidance_dir = args
+    basename = os.path.splitext(file.name)[0]
+    input_path = str(file)  # Convert WindowsPath to string
+    edge_path = os.path.join(edge_dir, f"{basename}_edge_map.jpg")
+    guidance_path = os.path.join(guidance_dir, file.name)
+    
+    # Skip if guidance image already exists
+    if os.path.exists(guidance_path):
+        return False
+        
+    # Read images
+    input_img = cv2.imread(input_path)
+    edge_img = cv2.imread(edge_path, cv2.IMREAD_GRAYSCALE)
+    
+    if input_img is None or edge_img is None:
+        print(f"Warning: Could not read input or edge image for {file.name}")
+        return False
+    
+    # Generate guidance image using input and edge
+    guidance_img = gen_guidance_img(input_img, edge_img)
+    
+    # Save the guidance image
+    cv2.imwrite(guidance_path, guidance_img)
+    return True
+
+
+def _generate_guidance_images(split="train", num_workers=config.NUM_WORKERS):
+    """
+    Generates guidance images for all input images based on edge maps using parallel processing.
     
     Args:
         split (str): Dataset split to use ('train', 'test', or 'val').
+        num_workers (int): Number of worker processes to use.
     """
+    import concurrent.futures
+    from tqdm import tqdm
+    
     # Select directories based on the split
     if split == "train":
         input_dir = config.TRAIN_IMAGES_INPUT
@@ -332,32 +407,32 @@ def _generate_guidance_images(split="train"):
     # Get all input images
     input_path = Path(input_dir)
     input_files = sorted([f for f in input_path.glob("*.jpg")])
+    total_files = len(input_files)
     
-    print(f"Generating guidance images for {len(input_files)} input images...")
+    print(f"Generating guidance images for {total_files} input images using {num_workers} workers...")
     
-    # Process each input image
-    for file in input_files:
-        # Get corresponding edge map
-        basename = os.path.splitext(file.name)[0]
-        input_path = str(file)  # Convert WindowsPath to string
-        edge_path = os.path.join(edge_dir, f"{basename}_edge_map.jpg")
-        guidance_path = os.path.join(guidance_dir, file.name)
-        
-        # Read images
-        input_img = cv2.imread(input_path)
-        edge_img = cv2.imread(edge_path, cv2.IMREAD_GRAYSCALE)
-        
-        if input_img is None or edge_img is None:
-            print(f"Warning: Could not read input or edge image for {file.name}")
-            continue
-        
-        # Generate guidance image using input and edge
-        # This would typically call the gen_guidance_img function
-        # For now, we'll use a simple combination as a placeholder
-        guidance_img = gen_gidance_img(input_img, edge_img)
-        
-        # Save the guidance image
-        cv2.imwrite(guidance_path, guidance_img)
+    # Prepare argument tuples for each task
+    tasks = [(file, input_dir, edge_dir, guidance_dir) for file in input_files]
     
-    print(f"Generated guidance images in {guidance_dir}.")
+    # Process images in parallel
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+        # Use tqdm to display progress
+        completed = 0
+        failed = 0
+        
+        # Process all tasks with progress tracking
+        results = list(tqdm(
+            executor.map(_process_single_guidance_image, tasks), 
+            total=total_files, 
+            desc="Generating guidance images"
+        ))
+        
+        # Count successes and failures
+        for success in results:
+            if success:
+                completed += 1
+            else:
+                failed += 1
+    
+    print(f"Generated {completed} guidance images in {guidance_dir}. Failed: {failed}.")
 

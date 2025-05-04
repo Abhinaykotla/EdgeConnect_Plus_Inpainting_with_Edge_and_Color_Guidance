@@ -5,6 +5,7 @@ __pycache__/
 *.png
 data_archive/*.zip
 data_archive/**/*.zip
+outputs/stash/
 *.pth
 *.tar
 *.gz
@@ -18,3 +19,4 @@ data_archive/**/*.zip
 *.out
 *.fdb_latexmk
 *.pdf
+tempCodeRunnerFile.py
