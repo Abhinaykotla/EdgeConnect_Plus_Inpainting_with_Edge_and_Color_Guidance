@@ -131,7 +131,10 @@ def plot_losses_g2(save_dir):
                 plt.plot(batch_losses['batch_idx'], batch_losses['G2_L1'], label='G2 L1', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], batch_losses['G2_Adv'], label='G2 Adv', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], batch_losses['G2_FM'], label='G2 FM', alpha=0.7)
-                plt.plot(batch_losses['batch_idx'], batch_losses['G2_Perc'], label='G2 Perc', alpha=0.7)
+                plt.plot(batch_losses['batch_idx'], 
+                        [x / 5.5 for x in batch_losses['G2_Perc']], 
+                        label='G2 Perc (scaled/10)', alpha=0.7)
+
                 plt.plot(batch_losses['batch_idx'], batch_losses['G2_Style'], label='G2 Style', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], batch_losses['D2_Real'], label='D2 Real', linestyle='dashed', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], batch_losses['D2_Fake'], label='D2 Fake', linestyle='dashed', alpha=0.7)
@@ -307,7 +310,7 @@ def save_checkpoint_g2(epoch, g2, d2, optimizer_g, optimizer_d, best_loss, histo
 # Function to keep only the last 3 best G2 checkpoints
 def manage_checkpoints_g2():
     checkpoint_files = sorted(glob.glob(os.path.join(CHECKPOINT_DIR, "checkpoint_epoch_*.pth")), key=os.path.getmtime)
-    if len(checkpoint_files) > 3:
+    if len(checkpoint_files) > config.MAX_CHECKPOINTS:
         os.remove(checkpoint_files[0])  # Remove the oldest checkpoint
         print(f"🗑️ Deleted old checkpoint: {checkpoint_files[0]}")
 

@@ -25,7 +25,9 @@ def feature_matching_loss(real_features, fake_features):
     return loss
 
 def l1_loss(pred, target):
-    return F.l1_loss(pred, target)
+    # If pred is in [-1,1] and target is in [0,1], normalize pred
+    pred_normalized = (pred + 1) / 2
+    return F.l1_loss(pred_normalized, target)
 
 # Load VGG16 Feature Extractor (Frozen)
 class VGG16FeatureExtractor(nn.Module):
@@ -47,9 +49,12 @@ class VGG16FeatureExtractor(nn.Module):
 
 # Perceptual Loss L_perc
 def perceptual_loss(vgg, gen_img, gt_img):
-    gen_features = vgg(gen_img)
+    # Normalize predicted image from [-1,1] to [0,1]
+    gen_img_normalized = (gen_img + 1) / 2
+    
+    gen_features = vgg(gen_img_normalized)
     gt_features = vgg(gt_img)
-
+    
     loss = 0.0
     for gf, gt in zip(gen_features, gt_features):
         loss += F.l1_loss(gf, gt)
@@ -65,12 +70,31 @@ def gram_matrix(feat):
     return gram / divisor
 
 def style_loss(vgg, gen_img, gt_img):
-    gen_features = vgg(gen_img)
+    # Normalize both images to same range before VGG processing
+    # If your network outputs [-1,1] but ground truth is [0,1]
+    gen_img_normalized = (gen_img + 1) / 2  # Convert from [-1,1] to [0,1]
+    
+    # Now both images are in [0,1] range
+    gen_features = vgg(gen_img_normalized)
     gt_features = vgg(gt_img)
 
     loss = 0.0
     for gf, gt in zip(gen_features, gt_features):
+        # Add safety check for valid gram matrices
+        if torch.isnan(gf).any() or torch.isnan(gt).any():
+            continue
+            
         gram_gf = gram_matrix(gf)
         gram_gt = gram_matrix(gt)
+        
+        # Skip this layer if NaN appears in gram matrices
+        if torch.isnan(gram_gf).any() or torch.isnan(gram_gt).any():
+            continue
+            
         loss += F.l1_loss(gram_gf, gram_gt)
+    
+    # Make sure we don't return NaN even if all layers were skipped
+    if torch.isnan(loss):
+        return torch.tensor(0.0, device=loss.device)
+        
     return loss

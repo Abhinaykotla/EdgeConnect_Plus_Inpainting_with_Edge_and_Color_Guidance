@@ -296,13 +296,23 @@ def train_g2_and_d2():
             print(f"🔍 Validation Samples at Epoch {epoch}...")
             g2_ema.apply_shadow()
             g2.eval()
+
             with torch.no_grad():
                 val_samples = next(iter(val_loader))
-                pred_img = g2(val_samples["input_img"].to(config.DEVICE),
-                              val_samples["guidance_img"].to(config.DEVICE),
-                              val_samples["mask"].to(config.DEVICE))
-                save_generated_images_g2(epoch, val_samples["input_img"], val_samples["mask"], val_samples["gt_img"],
-                                         val_samples["guidance_img"], pred_img, mode="val")
+                pred_img = g2(
+                    val_samples["input_img"].to(config.DEVICE),
+                    val_samples["guidance_img"].to(config.DEVICE),
+                    val_samples["mask"].to(config.DEVICE)
+                )
+                save_generated_images_g2(
+                    epoch,
+                    val_samples["input_img"],  # Input image
+                    val_samples["guidance_img"],  # Guidance image 
+                    val_samples["mask"],  # Mask
+                    val_samples["gt_img"],  # Ground truth
+                    pred_img,  # Predicted image
+                    mode="val"
+                )
             g2_ema.restore()
 
         elapsed_time = time.time() - start_time
