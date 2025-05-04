@@ -105,7 +105,7 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE_G2, shuffle=Tr
     Validates and generates guidance images if needed.
 
     Args:
-        split (str): Dataset split to use ('train', 'test', or 'val').
+        split (str): Dataset split to use ('train', 'test', 'val', or 'demo').
         batch_size (int): Number of samples per batch.
         shuffle (bool): Whether to shuffle the dataset.
         use_gt (bool): Whether to include ground truth-related processing. Defaults to True.
@@ -118,21 +118,22 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE_G2, shuffle=Tr
     
     # If validation wasn't successful, it means images are still being generated
     # or there was an error. Make sure they're generated before continuing.
-    if not successful:
-        print("Waiting for guidance images to be available...")
-        # Give some time for the images to be generated
-        import time
-        time.sleep(10)
+    # if not successful:
+    #     print("Waiting for guidance images to be available...")
+    #     # Give some time for the images to be generated
+    #     import time
+    #     time.sleep(10)
     
     # Use dictionary mapping for more efficient directory selection
     dataset_paths = {
         "train": (config.TRAIN_IMAGES_INPUT, config.TRAIN_GUIDANCE_DIR, config.TRAIN_IMAGES_GT),
         "test": (config.TEST_IMAGES_INPUT, config.TEST_GUIDANCE_DIR, config.TEST_IMAGES_GT),
-        "val": (config.VAL_IMAGES_INPUT, config.VAL_GUIDANCE_DIR, config.VAL_IMAGES_GT)
+        "val": (config.VAL_IMAGES_INPUT, config.VAL_GUIDANCE_DIR, config.VAL_IMAGES_GT),
+        "demo": (config.DEMO_IMAGES_INPUT, config.DEMO_GUIDANCE_DIR, config.DEMO_IMAGES_GT)
     }
     
     if split not in dataset_paths:
-        raise ValueError("Invalid split. Choose from 'train', 'test', or 'val'.")
+        raise ValueError("Invalid split. Choose from 'train', 'test', 'val', or 'demo'.")
     
     input_dir, guidance_dir, gt_dir = dataset_paths[split]
     
