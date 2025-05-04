@@ -79,7 +79,7 @@ class Config:
         self.BATCH_SIZE_G1 = 20 # 70
         self.BATCH_SIZE_G1_INFERENCE = 94
         self.LEARNING_RATE_G1 = 0.0001
-        self.D2G_LR_RATIO_G1 = 0.3
+        self.D2G_LR_RATIO_G1 = 0.5
         self.BETA1 = 0.0
         self.BETA2 = 0.9
         self.WEIGHT_DECAY = 0.00005
