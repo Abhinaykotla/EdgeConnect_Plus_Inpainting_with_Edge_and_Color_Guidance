@@ -179,15 +179,16 @@ def validate_edge_map(split="train"):
         _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE)
         return False
 
-    # Check if all input images have corresponding edge maps
-    for input_file in input_files:
-        # Change this line to match the actual file naming in _generate_edge_maps
-        expected_edge_file = f"{os.path.splitext(input_file.name)[0]}_edge_map.jpg"
-        if expected_edge_file not in edge_files:
-            print(f"Missing edge map for {input_file.name}. Clearing edge folder and regenerating edge maps...")
-            _clear_folder(edge_dir)
-            _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE)
-            return False
+    if len(input_files) == len(edge_files):
+        # Check if all input images have corresponding edge maps
+        for input_file in input_files:
+            # Change this line to match the actual file naming in _generate_edge_maps
+            expected_edge_file = f"{os.path.splitext(input_file.name)[0]}_edge_map.jpg"
+            if expected_edge_file not in edge_files:
+                print(f"Missing edge map for {input_file.name}. Clearing edge folder and regenerating edge maps...")
+                _clear_folder(edge_dir)
+                _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE)
+                return False
 
     print("Number of images and corresponding edge maps match.")
     return True
@@ -400,6 +401,7 @@ def _generate_guidance_images(split="train", num_workers=config.NUM_WORKERS):
     
     # First make sure edge maps exist
     validate_edge_map(split)
+    print(f"Edge maps validated for {split} split.")
     
     # Ensure guidance directory exists
     os.makedirs(guidance_dir, exist_ok=True)
