@@ -59,6 +59,8 @@ class Config:
         self.VAL_EDGE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/edge_maps/val")
         self.VAL_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/CelebA/val_guidance")
 
+        self.EVAL_RESULTS_DIR = os.path.join(self.OUTPUT_DIR, "eval_results")
+
         #######################################################################
         # G1 MODEL CONFIGURATIONS
         #######################################################################

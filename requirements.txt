@@ -4,6 +4,7 @@ matplotlib
 pillow
 opencv-python
 scikit-image
+scikit-image
 pyyaml
 sympy==1.13.1
 tqdm
