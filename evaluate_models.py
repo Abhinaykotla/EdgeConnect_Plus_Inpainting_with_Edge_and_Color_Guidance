@@ -71,7 +71,7 @@ def main():
                     "style_loss": style
                 })
 
-                if save_images and i < 5:
+                if save_images and i < 2:
                     fig, axs = plt.subplots(2, 3, figsize=(14, 8))
                     axs[0, 0].imshow(input_img[i].cpu().permute(1, 2, 0).numpy().clip(0, 1))
                     axs[0, 0].set_title("Masked Input"); axs[0, 0].axis("off")
