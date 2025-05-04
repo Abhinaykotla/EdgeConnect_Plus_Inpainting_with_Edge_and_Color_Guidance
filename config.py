@@ -33,7 +33,7 @@ class Config:
 
         self.VALIDATION_SAMPLE_EPOCHS = 5
         self.TRAINING_SAMPLE_EPOCHS = 1
-        self.MAX_BATCH_POINTS = 10000
+        self.MAX_BATCH_POINTS = 300000
         self.BATCH_SAMPLING_SIZE = 15 # 200
 
         self.CANNY_THRESHOLD_LOW = 110
@@ -94,7 +94,7 @@ class Config:
         self.BATCH_SIZE_G2 = 18
         self.BATCH_SIZE_G2_INFERENCE = 64
         self.LEARNING_RATE_G2 = 0.0001
-        self.D2G_LR_RATIO_G2 = 0.02
+        self.D2G_LR_RATIO_G2 = 0.5
         self.BETA1_G2 = 0.0
         self.BETA2_G2 = 0.9
         self.WEIGHT_DECAY_G2 = 0.00005
