@@ -1,4 +1,5 @@
-# g2_dataloader.py
+# g2_dataloader.py - Dataset loader for the second generator (G2) in EdgeConnect+ architecture
+# Handles loading, processing, and batching of images with their guidance and mask information
 
 import os
 import cv2
@@ -36,6 +37,7 @@ class EdgeConnectDataset_G2(Dataset):
         self.input_files = sorted([f.name for f in input_path.glob("*.jpg")])
         self.guidance_files = sorted([f.name for f in guidance_path.glob("*.jpg")])
 
+        # Verify dataset integrity by checking file counts match
         if self.use_gt and gt_dir:
             gt_path = Path(gt_dir)
             self.gt_files = sorted([f.name for f in gt_path.glob("*.jpg")])
@@ -46,24 +48,52 @@ class EdgeConnectDataset_G2(Dataset):
                 "Mismatch in number of input and guidance images."
         
         # Define transform for consistent resizing
+        # Converts images to PyTorch tensors and resizes them to the target dimensions
         self.transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Resize((image_size, image_size))
         ])
 
     def __len__(self):
+        """
+        Returns the total number of samples in the dataset.
+        
+        Returns:
+            int: Number of samples
+        """
         return len(self.input_files)
     
     @staticmethod
-    @lru_cache(maxsize=32)  # Cache recently processed images
+    @lru_cache(maxsize=128)  # Cache recently processed images to improve performance
     def _process_image(img_path):
-        """Process and cache image loading to avoid redundant operations"""
+        """
+        Process and cache image loading to avoid redundant operations.
+        
+        Args:
+            img_path (str): Path to the image file
+            
+        Returns:
+            numpy.ndarray: RGB image as a numpy array, or None if loading failed
+        """
         img = cv2.imread(img_path)
         if img is not None:
-            return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)  # Convert from BGR to RGB color space
         return None
 
     def __getitem__(self, idx):
+        """
+        Fetches and processes a single data sample.
+        
+        Args:
+            idx (int): Index of the sample to retrieve
+            
+        Returns:
+            dict: Dictionary containing:
+                - input_img (tensor): Input image tensor of shape [3, H, W]
+                - guidance_img (tensor): Guidance image tensor of shape [3, H, W]
+                - mask (tensor): Binary mask tensor of shape [1, H, W]
+                - gt_img (tensor, optional): Ground truth image tensor of shape [3, H, W]
+        """
         input_path = os.path.join(self.input_dir, self.input_files[idx])
         guidance_path = os.path.join(self.guidance_dir, self.guidance_files[idx])
 
@@ -72,15 +102,18 @@ class EdgeConnectDataset_G2(Dataset):
         guidance_img = self._process_image(guidance_path)
 
         # Generate raw mask from input image
+        # Raw mask identifies missing regions in the input image
         raw_mask = gen_raw_mask(input_img)
 
         # Get dilated mask (in [0,1] range where 1.0 = missing pixels)
+        # Dilation expands the mask slightly to ensure all damaged regions are covered
         dilated_mask_np = dilate_mask(raw_mask)
 
         # Convert to Tensors with proper formatting
         input_tensor = self.transform(input_img)
         guidance_tensor = self.transform(guidance_img)
-        mask_for_model = 1.0 - dilated_mask_np
+        # Invert mask for model use (0 = missing pixels, 1 = valid pixels)
+        mask_for_model = 1.0 - dilated_mask_np  
         mask_tensor = torch.from_numpy(mask_for_model).float().unsqueeze(0)  # Shape: (1, H, W)
         
         # Common return elements
@@ -114,17 +147,10 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE_G2, shuffle=Tr
         DataLoader: PyTorch DataLoader for the G2 dataset.
     """
     # First, validate guidance images - this will generate them if needed
-    successful = validate_guidance_images(split)
-    
-    # If validation wasn't successful, it means images are still being generated
-    # or there was an error. Make sure they're generated before continuing.
-    # if not successful:
-    #     print("Waiting for guidance images to be available...")
-    #     # Give some time for the images to be generated
-    #     import time
-    #     time.sleep(10)
-    
+    validate_guidance_images(split)
+
     # Use dictionary mapping for more efficient directory selection
+    # Maps dataset splits to their corresponding directories
     dataset_paths = {
         "train": (config.TRAIN_IMAGES_INPUT, config.TRAIN_GUIDANCE_DIR, config.TRAIN_IMAGES_GT),
         "test": (config.TEST_IMAGES_INPUT, config.TEST_GUIDANCE_DIR, config.TEST_IMAGES_GT),
@@ -137,7 +163,7 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE_G2, shuffle=Tr
     
     input_dir, guidance_dir, gt_dir = dataset_paths[split]
     
-    # Create the dataset
+    # Create the dataset with appropriate directories based on the requested split
     dataset = EdgeConnectDataset_G2(
         input_dir=input_dir,
         guidance_dir=guidance_dir,
@@ -146,19 +172,19 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE_G2, shuffle=Tr
         use_gt=use_gt
     )
 
-    # Return the DataLoader
+    # Return the DataLoader with the configured options
     return DataLoader(
         dataset,
         batch_size=batch_size or config.BATCH_SIZE_G2,
         shuffle=shuffle,
-        num_workers=config.NUM_WORKERS,
-        pin_memory=config.PIN_MEMORY,
-        prefetch_factor=2
+        num_workers=config.NUM_WORKERS,  # Parallel data loading threads
+        pin_memory=config.PIN_MEMORY,    # Accelerates transfer to GPU if used
+        prefetch_factor=2                # Number of batches to prefetch
     )
 
 
 if __name__ == '__main__':
-
+    # Example usage of the dataloader for testing/debugging purposes
     train_loader = get_dataloader_g2(split="train")
 
     for batch in train_loader:
@@ -168,6 +194,6 @@ if __name__ == '__main__':
         gt_img = batch.get("gt_img", None)  # Optional ground truth image
 
         # Process your batch here
-        print(f"Input shape: {input_img.shape}, Guidance shape: {guidance_img.shape}, Mask shape: {mask.shape}")
+        print(f"INFO: Input shape: {input_img.shape}, Guidance shape: {guidance_img.shape}, Mask shape: {mask.shape}")
         if gt_img is not None:
-            print(f"GT shape: {gt_img.shape}")
+            print(f"INFO: GT shape: {gt_img.shape}")

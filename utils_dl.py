@@ -10,6 +10,15 @@ from g1_model import EdgeGenerator
 def apply_canny(image):
     """
     Apply Canny edge detection to an image.
+    
+    Converts the image to grayscale if needed and applies the Canny edge detection algorithm
+    with thresholds specified in the config. Returns an inverted, normalized edge map.
+    
+    Args:
+        image (numpy.ndarray): Input image, can be grayscale or color
+        
+    Returns:
+        numpy.ndarray: Edge map with values in range [0, 1] where 1 represents non-edges Shape: (H, W)
     """
     # Ensure image is in the right format for Canny
     if image.ndim == 3:
@@ -33,17 +42,21 @@ def dilate_mask(mask, kernel_size=5, iterations=1):
     """
     Dilate the binary mask.
     
+    Expands the masked (hole) regions in the image by applying morphological dilation.
+    This is useful to ensure edges around holes are properly masked out.
+    
     Args:
-        mask: Input mask tensor or numpy array. Should be in format where:
+        mask (torch.Tensor or numpy.ndarray): Input mask where:
             0 = missing pixels (value < 10)
             255 = known pixels (value >= 10)
-        kernel_size: Size of dilation kernel
-        iterations: Number of dilation iterations
+        kernel_size (int): Size of dilation kernel, controls dilation amount
+        iterations (int): Number of dilation iterations, controls dilation intensity
     
     Returns:
-        Dilated mask as a numpy array where:
-        1.0 = missing pixels
-        0.0 = known pixels
+        numpy.ndarray: Dilated mask as a numpy array where:
+        1.0 = missing pixels (holes)
+        0.0 = known pixels (valid regions)
+        Shape: (H, W)
     """
     # Convert mask to numpy if it's a tensor
     if isinstance(mask, torch.Tensor):
@@ -74,12 +87,16 @@ def remove_mask_edge(mask, img):
     Remove the edges of the mask in the edge image by painting white (1.0)
     where the dilated mask indicates missing regions.
     
+    This ensures that edges don't appear at the boundaries of the masked regions,
+    which can cause artifacts in the inpainting process.
+    
     Args:
-        mask: Input mask tensor or numpy array
-        img: Edge image tensor or numpy array
+        mask (torch.Tensor or numpy.ndarray): Input mask
+        img (torch.Tensor or numpy.ndarray): Edge image to clean up
     
     Returns:
-        Edge image with mask edges removed
+        numpy.ndarray: Edge image with mask edges removed (white/1.0 in masked regions)
+        Shape: (H, W)
     """
     # Convert img to numpy if it's a tensor
     if isinstance(img, torch.Tensor):
@@ -96,6 +113,21 @@ def remove_mask_edge(mask, img):
     return result
 
 def gen_raw_mask(input_img):
+    """
+    Generate a binary mask from an image by thresholding white pixels.
+    
+    Assumes that white pixels (RGB > 245) represent holes in the image.
+    Returns an inverted mask where 0 represents holes and 255 represents valid regions.
+    
+    Args:
+        input_img (numpy.ndarray): RGB input image, shape (H, W, 3)
+    
+    Returns:
+        numpy.ndarray: Binary mask where:
+            0 = missing pixels (holes)
+            255 = known pixels (valid regions)
+        Shape: (H, W)
+    """
     # Extract mask: Consider pixels as missing if all RGB values > 245
     mask_binary = np.all(input_img > 245, axis=-1).astype(np.float32)  # Shape: (H, W)
     raw_mask = 255 - mask_binary * 255  # Invert mask (0s for missing pixels, 255s for known pixels)
@@ -111,31 +143,35 @@ def gen_guidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
     """
     Generate a guidance image by:
     1. Using TELEA inpainting on masked regions.
-    2. Overlaying colored edges (e.g., red) across the entire image.
-
+    2. Overlaying colored edges (e.g., black) across the entire image.
+    
+    This creates a guidance image that combines rough color information (from inpainting)
+    with structural information (from edges) to guide the G2 inpainting network.
+    
     Args:
-        input_img (np.ndarray): Masked BGR image (H, W, 3)
-        edge_img (np.ndarray): Grayscale predicted edge image (H, W)
-        edge_threshold (int): Edge threshold for overlay
-        edge_color (tuple): BGR tuple for edge overlay color
+        input_img (np.ndarray): Masked BGR image, shape (H, W, 3)
+        edge_img (np.ndarray): Grayscale predicted edge image, shape (H, W)
+        edge_color (tuple): BGR tuple for edge overlay color, default is black (0,0,0)
 
     Returns:
-        np.ndarray: Guidance image ready for G2 input
+        np.ndarray: Guidance image ready for G2 input, shape (H, W, 3)
     """
     # Step 1: Generate binary mask from white pixels using provided utility
     # Step 2: Inpaint the image using TELEA after dilation
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     expanded_mask = cv2.dilate((gen_raw_mask(input_img) < 10).astype(np.uint8), kernel, iterations=1)
 
+    # Create inpainting input and fill holes with fast marching method (TELEA)
     inpaint_input = input_img.copy()
-    inpaint_input[expanded_mask == 1] = 0
+    inpaint_input[expanded_mask == 1] = 0  # Set masked regions to black for inpainting
     inpainted_color = cv2.inpaint(inpaint_input, expanded_mask * 255, 15, cv2.INPAINT_TELEA)
 
     # Step 3: Overlay edge map across the entire image - not just masked regions
+    # Threshold edge map to get binary edges (edge_img < 150 represents edge pixels)
     all_edges = (edge_img < 150)
 
     guidance_img = inpainted_color.copy()
-    guidance_img[all_edges] = edge_color
+    guidance_img[all_edges] = edge_color  # Apply edge overlay with specified color
 
     return guidance_img
 
@@ -143,13 +179,15 @@ def gen_guidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
 def validate_edge_map(split="train"):
     """
     Validates if the number of images in the input folder matches the number of images in the edge folder.
-    If the number of files doesn't match or any edge map is missing, the edge folder is cleared, and edge maps are regenerated using the _generate_edge_maps function.
-
+    If the number of files doesn't match or any edge map is missing, the edge folder is cleared, and edge maps are regenerated.
+    
+    This ensures all input images have corresponding edge maps before training or inference.
+    
     Args:
-        split (str): Dataset split to use ('train', 'test', or 'val').
+        split (str): Dataset split to use ('train', 'test', 'val', or 'demo').
 
     Returns:
-        bool: True if validation and regeneration (if needed) are successful, False otherwise.
+        bool: True if validation successful (all edge maps exist), False if regeneration was needed.
     """
     # Select input and edge directories based on the split
     if split == "train":
@@ -176,8 +214,8 @@ def validate_edge_map(split="train"):
 
     # Check if the number of files matches
     if len(input_files) != len(edge_files):
-        print(f"Mismatch in number of images: {len(input_files)} input images vs {len(edge_files)} edge images.")
-        print("Clearing edge folder and regenerating edge maps...")
+        print(f"INFO: Mismatch in number of images: {len(input_files)} input images vs {len(edge_files)} edge images.")
+        print("INFO: Clearing edge folder and regenerating edge maps...")
         _clear_folder(edge_dir)
         _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE)
         return False
@@ -185,15 +223,15 @@ def validate_edge_map(split="train"):
     if len(input_files) == len(edge_files):
         # Check if all input images have corresponding edge maps
         for input_file in input_files:
-            # Change this line to match the actual file naming in _generate_edge_maps
+            # Check for edge map file with expected naming pattern
             expected_edge_file = f"{os.path.splitext(input_file.name)[0]}_edge_map.jpg"
             if expected_edge_file not in edge_files:
-                print(f"Missing edge map for {input_file.name}. Clearing edge folder and regenerating edge maps...")
+                print(f"INFO: Missing edge map for {input_file.name}. Clearing edge folder and regenerating edge maps...")
                 _clear_folder(edge_dir)
                 _generate_edge_maps(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE)
                 return False
 
-    print("Number of images and corresponding edge maps match.")
+    print("INFO: Number of images and corresponding edge maps match.")
     return True
 
 
@@ -201,12 +239,14 @@ def validate_guidance_images(split="train"):
     """
     Validates if guidance images exist for all input images.
     If any guidance image is missing, they will be generated.
-
+    
+    Guidance images combine both edge and color information for the G2 inpainting model.
+    
     Args:
-        split (str): Dataset split to use ('train', 'test', or 'val').
+        split (str): Dataset split to use ('train', 'test', 'val', or 'demo').
 
     Returns:
-        bool: True if validation was successful, False if regeneration was needed.
+        bool: True if validation successful (all guidance images exist), False if regeneration was needed.
     """
     # Select directories based on the split
     if split == "train":
@@ -232,45 +272,54 @@ def validate_guidance_images(split="train"):
     input_path = Path(input_dir)
     guidance_path = Path(guidance_dir)
     
-    # Use sets for faster membership testing
+    # Use sets for faster membership testing (O(1) lookup)
     input_basenames = {os.path.splitext(f.name)[0] for f in input_path.glob("*.jpg")}
     guidance_basenames = {os.path.splitext(f.name)[0] for f in guidance_path.glob("*.jpg")}
     
     # First check: Count comparison
     if len(input_basenames) != len(guidance_basenames):
-        print(f"Count mismatch: {len(input_basenames)} input images vs {len(guidance_basenames)} guidance images.")
-        print("Generating guidance images...")
+        print(f"INFO: Count mismatch: {len(input_basenames)} input images vs {len(guidance_basenames)} guidance images.")
+        print("INFO: Generating guidance images...")
         _generate_guidance_images(split=split)
         return False
     
-    # Second check: Name existence
+    # Second check: Name existence (ensure every input image has a guidance image)
     if not input_basenames.issubset(guidance_basenames):
-        print("Some input images don't have corresponding guidance images.")
-        print("Generating guidance images...")
+        print("INFO: Some input images don't have corresponding guidance images.")
+        print("INFO: Generating guidance images...")
         _generate_guidance_images(split=split)
         return False
     
-    print("All guidance images exist.")
+    print("INFO: All guidance images exist.")
     return True
 
 
 def _clear_folder(folder_path):
     """
     Clears all files in the specified folder.
-
+    
+    Used to remove outdated edge maps or guidance images before regeneration.
+    
     Args:
         folder_path (str): Path to the folder to clear.
     """
     for file in os.scandir(folder_path):
         os.remove(file.path)
-    print(f"Cleared folder: {folder_path}")
+    print(f"INFO: Cleared folder: {folder_path}")
 
 
 def _generate_edge_maps(split="train", batch_size=config.BATCH_SIZE_G1_INFERENCE):
     """
-    Generates edge maps for all input images in batches and saves them in the edge folder.
+    Generates edge maps for all input images using the trained G1 model.
+    
+    Processes images in batches for efficiency, using the G1 edge generator to predict
+    edges even in masked (missing) regions.
+    
+    Args:
+        split (str): Dataset split to use ('train', 'test', 'val', or 'demo')
+        batch_size (int): Batch size for processing images through the model
     """
-    # Import here instead of at the top level
+    # Import here instead of at the top level to avoid circular imports
     from dataloader_g1 import get_dataloader_g1
     
     # Select input and edge directories based on the split
@@ -289,33 +338,35 @@ def _generate_edge_maps(split="train", batch_size=config.BATCH_SIZE_G1_INFERENCE
     # Ensure the edge directory exists
     os.makedirs(edge_dir, exist_ok=True)
 
-    # Load the checkpoint
+    # Load the G1 model checkpoint
     checkpoint_path = config.G1_MODEL_PATH  # Path to the G1 model checkpoint
     checkpoint = torch.load(checkpoint_path, map_location=config.DEVICE)
 
     # Initialize the model architecture
     model = EdgeGenerator()
 
-    # Check if the checkpoint contains a full dictionary or just the state_dict
+    # Handle different checkpoint formats - some have wrapped state dicts, others are direct
     if "g1_state_dict" in checkpoint:
         model.load_state_dict(checkpoint["g1_state_dict"])  # Load only the model weights
     else:
         model.load_state_dict(checkpoint)  # Directly load raw weights if no wrapper exists
 
-    model.eval()  # Set the model to evaluation mode
+    # Prepare model for inference
+    model.eval()  # Set the model to evaluation mode (disables dropout, etc.)
     model.to(config.DEVICE)  # Move the model to the specified device (e.g., GPU)
 
-    # Initialize the dataloader with use_gt=False and filenames=True
+    # Initialize the dataloader with use_gt=False (we don't need ground truth) and filenames=True (to name saved files)
     dataloader = get_dataloader_g1(split=split, batch_size=config.BATCH_SIZE_G1_INFERENCE ,use_mask=True, use_gt=False, return_filenames=True)
 
     # Process images in batches
     for batch_idx, batch in enumerate(dataloader):
+        # Get batch data and move to device
         input_edge = batch["input_edge"].to(config.DEVICE)  # Shape: (batch_size, 1, H, W)
         gray = batch["gray"].to(config.DEVICE)              # Shape: (batch_size, 1, H, W)
         mask = batch["mask"].to(config.DEVICE)              # Shape: (1, H, W)
         filenames = batch.get("filenames", None)            # Get filenames if available
 
-        # Generate edge maps for the batch
+        # Generate edge maps for the batch using the G1 model (without gradient calculation)
         with torch.no_grad():
             edge_maps = model(input_edge, mask, gray)  # Pass the batch through the model
 
@@ -332,14 +383,16 @@ def _generate_edge_maps(split="train", batch_size=config.BATCH_SIZE_G1_INFERENCE
             else:
                 edge_path = os.path.join(edge_dir, f"edge_map_{batch_idx * batch_size + j}.jpg")
 
+            # Save the edge map as a jpeg image
             cv2.imwrite(edge_path, edge_map)
         
+        # Print progress every 10 batches
         if batch_idx % 10 == 0:
-            print(f"Processed batch {batch_idx + 1}/{len(dataloader)}")
+            print(f"INFO: Processed batch {batch_idx + 1}/{len(dataloader)}")
 
-    print(f"Generated edge maps for all input images in {edge_dir}.")
+    print(f"INFO: Generated edge maps for all input images in {edge_dir}.")
     
-    # Clean up GPU memory
+    # Clean up GPU memory to prevent leaks
     model.cpu()
     del model
     if torch.cuda.is_available():
@@ -350,11 +403,18 @@ def _process_single_guidance_image(args):
     """
     Process a single image for guidance generation.
     
+    This function is designed to be used with multiprocessing for parallel guidance image generation.
+    It takes a tuple of arguments to work with ProcessPoolExecutor.
+    
     Args:
-        args: Tuple containing (file, input_dir, edge_dir, guidance_dir)
+        args (tuple): Tuple containing (file, input_dir, edge_dir, guidance_dir)
+            - file (Path): Path object for the input image file
+            - input_dir (str): Directory containing input images
+            - edge_dir (str): Directory containing edge maps
+            - guidance_dir (str): Directory for saving generated guidance images
         
     Returns:
-        bool: True if successful, False otherwise
+        bool: True if guidance image was generated successfully, False if skipped or failed
     """
     file, input_dir, edge_dir, guidance_dir = args
     basename = os.path.splitext(file.name)[0]
@@ -366,15 +426,16 @@ def _process_single_guidance_image(args):
     if os.path.exists(guidance_path):
         return False
         
-    # Read images
-    input_img = cv2.imread(input_path)
-    edge_img = cv2.imread(edge_path, cv2.IMREAD_GRAYSCALE)
+    # Read input and edge images
+    input_img = cv2.imread(input_path)  # RGB input image with masked areas
+    edge_img = cv2.imread(edge_path, cv2.IMREAD_GRAYSCALE)  # Generated edge map
     
+    # Check for read errors
     if input_img is None or edge_img is None:
-        print(f"Warning: Could not read input or edge image for {file.name}")
+        print(f"WARNING: Could not read input or edge image for {file.name}")
         return False
     
-    # Generate guidance image using input and edge
+    # Generate guidance image by combining inpainted color and edge information
     guidance_img = gen_guidance_img(input_img, edge_img)
     
     # Save the guidance image
@@ -386,9 +447,12 @@ def _generate_guidance_images(split="train", num_workers=config.NUM_WORKERS):
     """
     Generates guidance images for all input images based on edge maps using parallel processing.
     
+    Guidance images combine color information (from rough inpainting) with 
+    structural information (from edge maps) to guide the G2 model.
+    
     Args:
-        split (str): Dataset split to use ('train', 'test', or 'val').
-        num_workers (int): Number of worker processes to use.
+        split (str): Dataset split to use ('train', 'test', 'val', or 'demo').
+        num_workers (int): Number of worker processes to use for parallel processing.
     """
     import concurrent.futures
     from tqdm import tqdm
@@ -413,9 +477,9 @@ def _generate_guidance_images(split="train", num_workers=config.NUM_WORKERS):
     else:
         raise ValueError("Invalid split. Choose from 'train', 'test', 'val', or 'demo'.")
 
-    # First make sure edge maps exist
+    # First make sure edge maps exist - generate them if needed
     validate_edge_map(split)
-    print(f"Edge maps validated for {split} split.")
+    print(f"INFO: Edge maps validated for {split} split.")
     
     # Ensure guidance directory exists
     os.makedirs(guidance_dir, exist_ok=True)
@@ -425,18 +489,18 @@ def _generate_guidance_images(split="train", num_workers=config.NUM_WORKERS):
     input_files = sorted([f for f in input_path.glob("*.jpg")])
     total_files = len(input_files)
     
-    print(f"Generating guidance images for {total_files} input images using {num_workers} workers...")
+    print(f"INFO: Generating guidance images for {total_files} input images using {num_workers} workers...")
     
-    # Prepare argument tuples for each task
+    # Prepare argument tuples for each task to pass to the worker function
     tasks = [(file, input_dir, edge_dir, guidance_dir) for file in input_files]
     
-    # Process images in parallel
+    # Process images in parallel using a process pool
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
-        # Use tqdm to display progress
+        # Track progress with counters
         completed = 0
         failed = 0
         
-        # Process all tasks with progress tracking
+        # Process all tasks with progress tracking via tqdm
         results = list(tqdm(
             executor.map(_process_single_guidance_image, tasks), 
             total=total_files, 
@@ -450,5 +514,4 @@ def _generate_guidance_images(split="train", num_workers=config.NUM_WORKERS):
             else:
                 failed += 1
     
-    print(f"Generated {completed} guidance images in {guidance_dir}. Failed: {failed}.")
-
+    print(f"INFO: Generated {completed} guidance images in {guidance_dir}. Failed: {failed}.")

@@ -12,10 +12,20 @@ from config import config
 CHECKPOINT_DIR = config.MODEL_CHECKPOINT_DIR_G2
 os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 
-# Function to save loss data to JSON files - G2 version
 def save_losses_to_json_g2(batch_losses, epoch_losses, save_dir):
     """
-    Saves batch and epoch losses for G2 with downsampling for large batch histories
+    Saves training loss data to JSON files with intelligent downsampling for G2 model.
+    
+    This function saves both batch-level and epoch-level loss histories to separate JSON files.
+    It handles downsampling of large batch histories to prevent excessive file sizes.
+    
+    Args:
+        batch_losses (dict): Dictionary containing batch-wise losses with keys like 'batch_idx', 'G2_L1', etc.
+        epoch_losses (dict): Dictionary containing epoch-wise losses with keys like 'epoch', 'G2_Loss', 'D2_Loss'
+        save_dir (str): Directory path to save the JSON files
+        
+    Returns:
+        None: Data is saved to disk as JSON files
     """
     os.makedirs(save_dir, exist_ok=True)
     
@@ -37,7 +47,7 @@ def save_losses_to_json_g2(batch_losses, epoch_losses, save_dir):
                     downsample_factor = 2
                     for key in existing_batch_data:
                         existing_batch_data[key] = existing_batch_data[key][::downsample_factor]
-                    print(f"Downsampled batch history from {len(existing_batch_data['batch_idx'])*2} to {len(existing_batch_data['batch_idx'])} points")
+                    print(f"INFO: Downsampled batch history from {len(existing_batch_data['batch_idx'])*2} to {len(existing_batch_data['batch_idx'])} points")
                 
                 # Update with new data
                 if existing_batch_data['batch_idx']:
@@ -56,7 +66,7 @@ def save_losses_to_json_g2(batch_losses, epoch_losses, save_dir):
                 
                 batch_losses = existing_batch_data
         except (json.JSONDecodeError, KeyError) as e:
-            print(f"Warning: Could not load existing batch data: {e}")
+            print(f"WARNING: Could not load existing batch data: {e}")
     
     # Save updated batch data
     with open(batch_path, 'w') as f:
@@ -81,19 +91,28 @@ def save_losses_to_json_g2(batch_losses, epoch_losses, save_dir):
                 
                 epoch_losses = existing_epoch_data
             except (json.JSONDecodeError, KeyError):
-                print("Warning: Could not load existing epoch data, creating new file.")
+                print("WARNING: Could not load existing epoch data, creating new file.")
     
     # Save updated epoch data
     with open(epoch_path, 'w') as f:
         json.dump(epoch_losses, f)
 
-# G2-specific plot_losses function
+
 def plot_losses_g2(save_dir):
     """
-    Plots loss graphs from JSON files with caching for G2 training
-    Layout: 2 plots
-    - Top row: All batch losses (spanning full width)
-    - Bottom row: All epoch losses (spanning full width)
+    Plots training loss graphs from saved JSON files for G2 model.
+    
+    Creates a two-row figure:
+    - Top: Batch-level losses for component-wise analysis
+    - Bottom: Epoch-level losses for overall training progress
+    
+    Handles large loss files with file size checking to prevent memory issues.
+    
+    Args:
+        save_dir (str): Directory containing the JSON loss files and where plots will be saved
+        
+    Returns:
+        None: Plots are saved to disk as PNG files
     """
     os.makedirs(save_dir, exist_ok=True)
     
@@ -109,14 +128,14 @@ def plot_losses_g2(save_dir):
             with open(batch_path, 'r') as f:
                 batch_losses = json.load(f)
         except (json.JSONDecodeError, KeyError):
-            print("Warning: Could not load batch history.")
+            print("WARNING: Could not load batch history.")
     
     if os.path.exists(epoch_path):
         try:
             with open(epoch_path, 'r') as f:
                 epoch_losses = json.load(f)
         except (json.JSONDecodeError, KeyError):
-            print("Warning: Could not load epoch history, using empty data.")
+            print("WARNING: Could not load epoch history, using empty data.")
     
     # Create plots
     plt.figure(figsize=(20, 12))
@@ -139,7 +158,7 @@ def plot_losses_g2(save_dir):
                 plt.plot(batch_losses['batch_idx'], batch_losses['D2_Real'], label='D2 Real', linestyle='dashed', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], batch_losses['D2_Fake'], label='D2 Fake', linestyle='dashed', alpha=0.7)
         except (json.JSONDecodeError, KeyError, KeyError) as e:
-            print(f"Warning: Could not plot batch history: {e}")
+            print(f"WARNING: Could not plot batch history: {e}")
     else:
         plt.text(0.5, 0.5, "Batch loss history too large to display", 
                 horizontalalignment='center', verticalalignment='center')
@@ -166,22 +185,28 @@ def plot_losses_g2(save_dir):
     plt.savefig(os.path.join(save_dir, f'loss_trends_epoch_{latest_epoch}.png'))
     plt.close()
 
+
 def save_generated_images_g2(epoch, masked_input, guidance, masks, gt_images, pred_images, save_dir=None, mode="train", batch_idx=None):
     """
-    Saves generated inpainted images in a 2x3 grid:
+    Saves visualization grids of G2 inpainting results for monitoring training progress.
+    
+    Creates a 2x3 visualization grid for each sample:
     - Row 1: Masked Input, Guidance Image, Generated Output
     - Row 2: Input Mask, Ground Truth, Visualization of Differences
     
     Args:
-        epoch: Current epoch number
-        masked_input: Input images with masks applied
-        guidance: Guidance images 
-        masks: Binary mask images
-        gt_images: Ground truth images
-        pred_images: Generated inpainted images
-        save_dir: Base directory to save images
-        mode: Training mode ("train" or "val")
-        batch_idx: Optional batch index for batch-specific saves
+        epoch (int): Current epoch number
+        masked_input (torch.Tensor): Input images with masks applied, shape [B, 3, H, W]
+        guidance (torch.Tensor): Guidance images (edge and color maps), shape [B, 3, H, W]
+        masks (torch.Tensor): Binary mask images, shape [B, 1, H, W]
+        gt_images (torch.Tensor): Ground truth target images, shape [B, 3, H, W]
+        pred_images (torch.Tensor): Generated inpainted images, shape [B, 3, H, W]
+        save_dir (str, optional): Directory to save images (if None, uses config default)
+        mode (str): Training mode ("train" or "val")
+        batch_idx (int, optional): Batch index for batch-specific saves
+        
+    Returns:
+        None: Images are saved to disk as PNG files
     """
     # Set up save directory
     if batch_idx is not None:
@@ -259,22 +284,28 @@ def save_generated_images_g2(epoch, masked_input, guidance, masks, gt_images, pr
         plt.savefig(save_path)
         plt.close(fig)
 
-# Function to save G2 model and training history
+
 def save_checkpoint_g2(epoch, g2, d2, optimizer_g, optimizer_d, best_loss, history, batch_losses, epoch_losses, g2_ema=None):
     """
     Saves the G2/D2 model, optimizers, and training history as a checkpoint.
-
+    
+    Creates a comprehensive checkpoint file containing model weights, optimizer states,
+    training history, and EMA parameters if available.
+    
     Args:
-        epoch (int): Current epoch number.
-        g2 (torch.nn.Module): Generator model (G2).
-        d2 (torch.nn.Module): Discriminator model (D2).
-        optimizer_g (torch.optim.Optimizer): Optimizer for the generator.
-        optimizer_d (torch.optim.Optimizer): Optimizer for the discriminator.
-        best_loss (float): Best loss value achieved so far.
-        history (dict): Training history.
-        batch_losses (dict): Batch-wise loss history.
-        epoch_losses (dict): Epoch-wise loss history.
-        g2_ema (ExponentialMovingAverage, optional): EMA model for the generator.
+        epoch (int): Current epoch number
+        g2 (torch.nn.Module): Generator model (G2)
+        d2 (torch.nn.Module): Discriminator model (D2)
+        optimizer_g (torch.optim.Optimizer): Optimizer for the generator
+        optimizer_d (torch.optim.Optimizer): Optimizer for the discriminator
+        best_loss (float): Best loss value achieved so far
+        history (dict): Training history dictionary
+        batch_losses (dict): Batch-wise loss history
+        epoch_losses (dict): Epoch-wise loss history
+        g2_ema (ExponentialMovingAverage, optional): EMA model for the generator
+        
+    Returns:
+        None: Checkpoint is saved to disk
     """
     checkpoint = {
         "epoch": epoch,
@@ -297,7 +328,7 @@ def save_checkpoint_g2(epoch, g2, d2, optimizer_g, optimizer_d, best_loss, histo
 
     # Save the checkpoint
     torch.save(checkpoint, checkpoint_path)
-    print(f"✅ Checkpoint saved: {checkpoint_path}")
+    print(f"INFO: Checkpoint saved: {checkpoint_path}")
 
     # Save training history separately for easier access
     history_path = os.path.join(CHECKPOINT_DIR, "training_history.json")
@@ -307,15 +338,48 @@ def save_checkpoint_g2(epoch, g2, d2, optimizer_g, optimizer_d, best_loss, histo
     # Manage old checkpoints (keep only the last 3)
     manage_checkpoints_g2()
 
-# Function to keep only the last 3 best G2 checkpoints
+
 def manage_checkpoints_g2():
+    """
+    Manages G2 model checkpoint files by removing older checkpoints.
+    
+    Retains only the most recent checkpoints (number defined in config.MAX_CHECKPOINTS)
+    to prevent excessive disk usage while maintaining training continuity.
+    
+    Args:
+        None: Uses global CHECKPOINT_DIR variable
+        
+    Returns:
+        None: Modifies files on disk
+    """
     checkpoint_files = sorted(glob.glob(os.path.join(CHECKPOINT_DIR, "checkpoint_epoch_*.pth")), key=os.path.getmtime)
     if len(checkpoint_files) > config.MAX_CHECKPOINTS:
         os.remove(checkpoint_files[0])  # Remove the oldest checkpoint
-        print(f"🗑️ Deleted old checkpoint: {checkpoint_files[0]}")
+        print(f"INFO: Deleted old checkpoint: {checkpoint_files[0]}")
 
-# Load G2 checkpoint with enhanced data recovery
+
 def load_checkpoint_g2(g2, d2, optimizer_g, optimizer_d, g2_ema=None):
+    """
+    Loads G2 model checkpoint with robust error handling and fallback mechanisms.
+    
+    Attempts to load the most recent checkpoint file. If unavailable, falls back to 
+    training history JSON. Handles EMA weights if available.
+    
+    Args:
+        g2 (torch.nn.Module): Generator model (G2) to load weights into
+        d2 (torch.nn.Module): Discriminator model (D2) to load weights into
+        optimizer_g (torch.optim.Optimizer): Generator optimizer to restore state
+        optimizer_d (torch.optim.Optimizer): Discriminator optimizer to restore state
+        g2_ema (ExponentialMovingAverage, optional): EMA model to restore shadow weights
+        
+    Returns:
+        tuple: (start_epoch, best_loss, history, batch_losses, epoch_losses)
+            - start_epoch (int): Next epoch to begin training from
+            - best_loss (float): Best loss value achieved so far
+            - history (dict): Training history dictionary
+            - batch_losses (dict): Batch-wise loss history
+            - epoch_losses (dict): Epoch-wise loss history
+    """
     checkpoint_files = sorted(glob.glob(os.path.join(CHECKPOINT_DIR, "checkpoint_epoch_*.pth")), key=os.path.getmtime)
     batch_losses = {'batch_idx': [], 'G2_L1': [], 'G2_Adv': [], 'G2_FM': [], 'G2_Perc': [], 'G2_Style': [], 'D2_Real': [], 'D2_Fake': []}
     epoch_losses = {'epoch': [], 'G2_Loss': [], 'D2_Loss': []}
@@ -337,10 +401,10 @@ def load_checkpoint_g2(g2, d2, optimizer_g, optimizer_d, g2_ema=None):
 
         if g2_ema is not None and "ema_shadow" in checkpoint:
             g2_ema.shadow = checkpoint["ema_shadow"]
-            print("✅ EMA weights restored.")
+            print("INFO: EMA weights restored.")
 
         start_epoch = checkpoint["epoch"] + 1
-        print(f"🔄 Resuming training from epoch {start_epoch}, Best G2 Loss: {best_loss:.4f}")
+        print(f"INFO: Resuming training from epoch {start_epoch}, Best G2 Loss: {best_loss:.4f}")
         return start_epoch, best_loss, history, batch_losses, epoch_losses
 
     # Fallback to JSON if no checkpoint exists
@@ -354,28 +418,58 @@ def load_checkpoint_g2(g2, d2, optimizer_g, optimizer_d, g2_ema=None):
                     batch_losses = json_data["batch_losses"]
                 if "epoch_losses" in json_data:
                     epoch_losses = json_data["epoch_losses"]
-                print("🔄 Loaded loss history from JSON file.")
+                print("INFO: Loaded loss history from JSON file.")
         except (json.JSONDecodeError, KeyError):
-            print("Warning: Could not load history from JSON.")
+            print("WARNING: Could not load history from JSON.")
 
     return 1, float("inf"), {"g2_loss": [], "d2_loss": []}, batch_losses, epoch_losses
 
+
 def print_model_info_g2(model, model_name="Model"):
     """
-    Prints detailed information about the model, including:
-    - Total number of parameters
-    - Trainable parameters
-    - Parameters per layer
+    Prints detailed information about the G2 model architecture and parameters.
+    
+    Reports total parameter count, trainable parameters, and layer-by-layer breakdown
+    to help understand model complexity and structure.
+    
+    Args:
+        model (torch.nn.Module): PyTorch model to analyze
+        model_name (str): Name to display for this model in the output
+        
+    Returns:
+        tuple: (total_params, trainable_params)
+            - total_params (int): Total number of parameters in the model
+            - trainable_params (int): Number of trainable parameters in the model
     """
     total_params = sum(p.numel() for p in model.parameters())
     trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    print(f"\n🔹 {model_name} Summary")
-    print(f"🔹 Total Parameters: {total_params:,}")
-    print(f"🔹 Trainable Parameters: {trainable_params:,}")
-    print("🔹 Layer-wise Breakdown:")
+    print(f"\nINFO: {model_name} Summary")
+    print(f"INFO: Total Parameters: {total_params:,}")
+    print(f"INFO: Trainable Parameters: {trainable_params:,}")
+    print("INFO: Layer-wise Breakdown:")
 
     for name, param in model.named_parameters():
         print(f"   {name}: {param.numel()} parameters")
 
     return total_params, trainable_params
+
+
+def calculate_model_hash_g2(model):
+    """
+    Calculate a hash of model parameters to track changes.
+    
+    This function creates a unique hash based on model parameter shapes and values,
+    providing a way to verify model state at different points during training.
+    
+    Args:
+        model (torch.nn.Module): The PyTorch model to hash
+        
+    Returns:
+        int: A hash value representing the current model state
+    """
+    params = [p.data for p in model.parameters()]
+    param_shapes = [p.shape for p in params]
+    param_data = torch.cat([p.flatten() for p in params if p.numel() > 0])
+    param_hash = hash(str(param_shapes) + str(param_data.sum().item()) + str(param_data[:5].tolist()))
+    return param_hash
