@@ -118,11 +118,11 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE_G2, shuffle=Tr
     
     # If validation wasn't successful, it means images are still being generated
     # or there was an error. Make sure they're generated before continuing.
-    if not successful:
-        print("Waiting for guidance images to be available...")
-        # Give some time for the images to be generated
-        import time
-        time.sleep(10)
+    # if not successful:
+    #     print("Waiting for guidance images to be available...")
+    #     # Give some time for the images to be generated
+    #     import time
+    #     time.sleep(10)
     
     # Use dictionary mapping for more efficient directory selection
     dataset_paths = {

@@ -63,6 +63,7 @@ class Config:
         self.DEMO_GUIDANCE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/guidance")
         self.DEMO_IMAGES_GT = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/gt")
         self.DEMO_EDGE_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/edge_maps")
+        self.DEMO_RESULTS_DIR = os.path.join(self.DRIVE_DS_DIR, "data_archive/demo/demo_results")
 
         self.EVAL_RESULTS_DIR = os.path.join(self.OUTPUT_DIR, "eval_results")
 

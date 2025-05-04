@@ -278,6 +278,8 @@ def _generate_edge_maps(split="train", batch_size=config.BATCH_SIZE_G1_INFERENCE
         edge_dir = config.TRAIN_EDGE_DIR
     elif split == "test":
         edge_dir = config.TEST_EDGE_DIR
+    elif split == "val":
+        edge_dir = config.VAL_EDGE_DIR
     elif split == "demo":
         edge_dir = config.DEMO_EDGE_DIR
     else:
@@ -400,6 +402,10 @@ def _generate_guidance_images(split="train", num_workers=config.NUM_WORKERS):
         input_dir = config.TEST_IMAGES_INPUT
         guidance_dir = config.TEST_GUIDANCE_DIR
         edge_dir = config.TEST_EDGE_DIR
+    elif split == "val":
+        input_dir = config.VAL_IMAGES_INPUT
+        guidance_dir = config.VAL_GUIDANCE_DIR
+        edge_dir = config.VAL_EDGE_DIR
     elif split == "demo":
         input_dir = config.DEMO_IMAGES_INPUT
         guidance_dir = config.DEMO_GUIDANCE_DIR
