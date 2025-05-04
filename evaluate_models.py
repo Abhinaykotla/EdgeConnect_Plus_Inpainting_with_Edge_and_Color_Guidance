@@ -1,27 +1,26 @@
+
 import os
 import torch
 import numpy as np
-from tqdm import tqdm
-from pathlib import Path
 import pandas as pd
 import matplotlib.pyplot as plt
-import multiprocessing
-
+from tqdm import tqdm
+from pathlib import Path
 from skimage.metrics import peak_signal_noise_ratio as compare_psnr
 from skimage.metrics import structural_similarity as compare_ssim
+
+import lpips  # LPIPS module
 
 from config import config
 from dataloader_g2 import get_dataloader_g2
 from g2_model import InpaintingGeneratorG2
 from loss_functions import VGG16FeatureExtractor, perceptual_loss, style_loss, l1_loss
 
-def main():
-    # Set device
-    device = config.DEVICE
 
-    # Output directory
+def main():
+    device = config.DEVICE
     os.makedirs(config.EVAL_RESULTS_DIR, exist_ok=True)
-    save_images = True  # Toggle this to save visuals
+    save_images = True
 
     # Load model
     model = InpaintingGeneratorG2().to(device)
@@ -31,16 +30,15 @@ def main():
     model.load_state_dict(checkpoint["g2_state_dict"])
     model.eval()
 
-    # Load VGG for perceptual/style loss
+    # Load VGG and LPIPS
     vgg = VGG16FeatureExtractor().to(device).eval()
+    lpips_model = lpips.LPIPS(net='vgg').to(device)
+    lpips_model.eval()
 
-    # Dataloader - specify the batch size explicitly
+    # Load test data
     test_loader = get_dataloader_g2(split="test", batch_size=config.BATCH_SIZE_G2_INFERENCE)
-
-    # Storage
     metrics_list = []
 
-    # Evaluation loop
     with torch.no_grad():
         for batch_idx, batch in enumerate(tqdm(test_loader, desc="Evaluating")):
             input_img = batch["input_img"].to(device)
@@ -62,13 +60,19 @@ def main():
                 perc = perceptual_loss(vgg, pred_img[i:i+1], gt_img[i:i+1]).item()
                 style = style_loss(vgg, pred_img[i:i+1], gt_img[i:i+1]).item()
 
+                # Compute LPIPS: convert to [-1, 1] and 3-channel
+                pred_lp = pred_img[i:i+1]
+                gt_lp = gt_img[i:i+1]
+                lpips_value = lpips_model(pred_lp, gt_lp).item()
+
                 metrics_list.append({
                     "index": batch_idx * config.BATCH_SIZE_G2_INFERENCE + i,
                     "psnr": psnr,
                     "ssim": ssim,
                     "l1_loss": l1,
                     "perceptual_loss": perc,
-                    "style_loss": style
+                    "style_loss": style,
+                    "lpips": lpips_value
                 })
 
                 if save_images and i < 2:
@@ -100,14 +104,14 @@ def main():
     df = pd.DataFrame(metrics_list)
     csv_path = os.path.join(config.EVAL_RESULTS_DIR, "evaluation_metrics.csv")
     df.to_csv(csv_path, index=False)
-    print(f"📊 Metrics saved to {csv_path}")
+    print(f"📊 Metrics saved to: {csv_path}")
 
-    # Print mean/median
+    # Summary
     print("\n📈 Evaluation Summary:")
     print(df.describe().loc[["mean", "50%"]].rename(index={"50%": "median"}))
 
 
 if __name__ == "__main__":
-    # Important for multiprocessing on Windows
+    import multiprocessing
     multiprocessing.freeze_support()
     main()
