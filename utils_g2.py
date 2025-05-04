@@ -132,7 +132,7 @@ def plot_losses_g2(save_dir):
                 plt.plot(batch_losses['batch_idx'], batch_losses['G2_Adv'], label='G2 Adv', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], batch_losses['G2_FM'], label='G2 FM', alpha=0.7)
                 plt.plot(batch_losses['batch_idx'], 
-                        [x / 5.5 for x in batch_losses['G2_Perc']], 
+                        [x / 10 for x in batch_losses['G2_Perc']], 
                         label='G2 Perc (scaled/10)', alpha=0.7)
 
                 plt.plot(batch_losses['batch_idx'], batch_losses['G2_Style'], label='G2 Style', alpha=0.7)

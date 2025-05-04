@@ -6,6 +6,7 @@ opencv-python
 scikit-image
 scikit-image
 pyyaml
+lpips
 sympy==1.13.1
 tqdm
 torch --index-url https://download.pytorch.org/whl/cu121

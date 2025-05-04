@@ -351,3 +351,13 @@ def train_g1_and_d1():
         print(f"Model hash after epoch {epoch}: {model_hash}")
 
     print(f"\n✅ Training Completed in {time.time() - start_time:.2f} seconds.\n")
+
+
+if __name__ == '__main__':
+    import multiprocessing
+    
+    # Ensure proper multiprocessing behavior on Windows
+    multiprocessing.freeze_support()
+
+    print("Starting EdgeConnect G2 (Inpainting Generator) training...")
+    train_g1_and_d1()

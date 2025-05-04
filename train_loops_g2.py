@@ -167,7 +167,7 @@ def train_g2_and_d2():
                 pred_img = g2(input_img, guidance_img, mask)
 
                 # Calculate G2 losses
-                g2_l1 = l1_loss(pred_img, gt_img) * config.L1_LOSS_WEIGHT_G2
+                g2_l1 = l1_loss(pred_img * mask, gt_img * mask) * config.L1_LOSS_WEIGHT_G2
                 g2_adv = adversarial_loss(d2(input_img, pred_img), torch.ones_like(d2(input_img, pred_img))) * config.ADV_LOSS_WEIGHT_G2
                 g2_perc = perceptual_loss(vgg, pred_img, gt_img) * config.PERCEPTUAL_LOSS_G2
                 g2_style = style_loss(vgg, pred_img, gt_img) * config.STYLE_LOSS_WEIGHT_G2
@@ -317,3 +317,13 @@ def train_g2_and_d2():
 
         elapsed_time = time.time() - start_time
         print(f"✅ Epoch {epoch}/{num_epochs} - G2 Loss: {avg_g_loss:.4f}, D2 Loss: {avg_d_loss:.4f}, Time: {elapsed_time/60:.2f} min\n")
+
+
+if __name__ == '__main__':
+    import multiprocessing
+
+    # Ensure proper multiprocessing behavior on Windows
+    multiprocessing.freeze_support()
+
+    print("Starting EdgeConnect G2 (Inpainting Generator) training...")
+    train_g2_and_d2()
