@@ -1,57 +1,133 @@
+
 # EdgeConnect+: Adversarial Inpainting with Edge and Color Guidance
 
-## Overview
-**EdgeConnect+** is an advanced image inpainting framework that enhances the original EdgeConnect model by integrating both **edge** and **color guidance** for realistic image restoration. Our approach aims to improve the **structural accuracy** and **color consistency** of inpainted images, making it suitable for applications in **photo restoration, object removal, and content-aware image editing**.
+EdgeConnect+ is a deep learning-based image inpainting framework that enhances the original [EdgeConnect](https://arxiv.org/abs/1901.00212) model. This project integrates both **edge structure** and **color guidance** to produce perceptually realistic reconstructions of masked images.
 
-## Features
-- **Edge-Driven Inpainting**: Uses an edge generator to predict missing structures.
-- **Color Guidance via Gaussian Blur**: Incorporates a smoothed color map to ensure seamless blending.
-- **GAN-Based Architecture**: Leverages generative adversarial networks (GANs) to enhance realism.
-- **Multi-Dataset Training**: Evaluated on CelebA (faces) and Places2 (scenes) for diverse inpainting capabilities.
+---
 
-## Methodology
-1. **Edge Generation**: A GAN-based edge generator predicts missing edges.
-2. **Color Map Generation**: A Gaussian-blurred color map provides contextual hints for missing regions.
-3. **Final Image Reconstruction**: A second GAN synthesizes the final inpainted image using edge and color information.
+## 🧠 Overview
 
-## Datasets
-- **[CelebA](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html)**: 202,599 facial images with various poses and expressions.
-- **[Places2](http://places2.csail.mit.edu/)**: 1.8 million scene images across 365 categories.
+The model is divided into a three-stage pipeline:
 
-<!-- ## Installation
-1. Clone the repository:
-   ```sh
-   git clone https://github.com/your-repo/EdgeConnect-Plus.git
-   cd EdgeConnect-Plus
-   ```
-2. Install dependencies:
-   ```sh
-   pip install -r requirements.txt
-   ```
-3. Download datasets (optional):
-   ```sh
-   bash scripts/download_datasets.sh
-   ```
+1. **Edge Generation (G1)**: Predicts edges in masked regions using grayscale input and binary masks.
+2. **Color Map Generation**: Provides low-frequency chromatic information using Gaussian blur; future work includes using Partial Convolutions and Contextual Attention for improved color realism.
+3. **Final Inpainting (G2)**: Uses a composite RGB input (edge, color, original image outside mask) + mask to synthesize realistic image completions.
 
-## Usage
-### Training the Model
-```sh
-python train.py --dataset celebA --epochs 50
+---
+
+## 📁 Project Structure
+
 ```
-### Testing the Model
-```sh
-python test.py --input sample.jpg --output result.jpg
+.
+├── config.py                  # Global configuration
+├── train.py                   # Main entry point
+├── dataloader_g1.py           # Dataloader for G1
+├── dataloader_g2.py           # Dataloader for G2
+├── g1_model.py                # Generator and Discriminator for G1
+├── g2_model.py                # Generator for G2
+├── loss_functions.py          # All loss definitions (L1, Adv, FM, Perceptual, Style)
+├── train_loops_g1.py          # Training loop for G1
+├── train_loops_g2.py          # Training loop for G2
+├── utils_dl.py                # Dataset utilities
+├── utils_g1.py                # Utilities for training G1 (saving, evaluation, etc.)
+├── utils_g2.py                # Utilities for training G2
+├── find_lr.py                 # Learning rate finder
+├── requirements.txt           # Python dependencies
+├── README.md                  # This file
+└── results/                   # Output samples and evaluation plots
 ```
-### Visualization
-```sh
-python visualize.py --dataset places2
-``` -->
 
-## Contributors
-- **Abhinay Kotla** (axk5827@mavs.uta.edu)
-- **Sanjana Ravi Prakash** (sxr8375@mavs.uta.edu)
+---
 
-## License
-This project is licensed under the MIT License.
+## 🧪 Datasets
+
+- **CelebA Dataset**: All images are center-cropped and resized to 256×256.
+- Irregular binary masks generated with ≥ 20% coverage.
+- Masks applied during preprocessing to create white-hole inputs.
+- Ground truth edges from Canny on original images.
+- Input edges computed from masked image with mask-edges removed.
+
+---
+
+## 📈 Current Progress
+
+| Stage | Status |
+|-------|--------|
+| G1 Edge Generator | ✅ Trained and evaluated |
+| Color Map | ✅ Implemented |
+| G2 Inpainting | 🚧 Training in progress |
+| Loss Curves & Logs | ✅ Available |
+| Evaluation Metrics | 🔜 PSNR, SSIM, LPIPS, MAE |
+
+---
+
+## 🧾 Loss Functions
+
+- `L1 Loss`: Structural fidelity
+- `Adversarial Loss`: GAN realism (NS-GAN)
+- `Feature Matching`: For discriminator stability
+- `Perceptual Loss`: From VGG16
+- `Style Loss`: Texture preservation via Gram matrices
+- `Gradient Penalty`: For discriminator regularization
+
+---
+
+## 🧪 Evaluation Metrics
+
+Planned metrics to evaluate model output:
+- **PSNR** (Higher is better)
+- **SSIM** (Closer to 1 is better)
+- **LPIPS** (Lower is better)
+- **L1 Error** (Lower is better)
+
+---
+
+## 🚀 Training Setup
+
+- Batch Size: 12
+- Epochs: 100 (G1); G2 training ongoing
+- Optimizer: Adam (lr=1e-4, weight_decay=5e-5)
+- Mixed Precision + EMA
+- Early Stopping: 5 epoch patience
+
+---
+
+## 📷 Visual Results
+
+You can find sample outputs in the `results/` directory, including:
+- Edge maps generated by G1
+- Masked input/output samples
+- Loss trend plots
+
+---
+
+## 🔭 Future Work
+
+- Finish G2 model training and fine-tuning
+- Replace Gaussian blur with learnable color propagation (Partial Convolutions, Contextual Attention)
+- Expand to general-purpose datasets like **Places2**
+- Integrate real-time inference pipeline
+
+---
+
+## 🤝 Contributors
+
+- **Abhinay Kotla** — [@abhinaykotla](https://github.com/Abhinaykotla)  
+- **Sanjana Ravi Prakash** — [@sanjanarp](https://github.com/sanjanarp)
+
+---
+
+## 📄 License
+
+This repository is shared for educational and research purposes.
+
+---
+
+## 📬 Acknowledgements
+
+- [EdgeConnect (Nazeri et al.)](https://arxiv.org/abs/1901.00212)
+- [CelebA Dataset](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html)
+- [PartialConv](https://arxiv.org/abs/1804.07723)
+- [Contextual Attention](https://arxiv.org/abs/1801.07892)
 
 ---
