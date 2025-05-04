@@ -107,7 +107,7 @@ def gen_raw_mask(input_img):
 ####################################################
 
 
-def gen_gidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
+def gen_guidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
     """
     Generate a guidance image by:
     1. Using TELEA inpainting on masked regions.
@@ -364,14 +364,14 @@ def _process_single_guidance_image(args):
         return False
     
     # Generate guidance image using input and edge
-    guidance_img = gen_gidance_img(input_img, edge_img)
+    guidance_img = gen_guidance_img(input_img, edge_img)
     
     # Save the guidance image
     cv2.imwrite(guidance_path, guidance_img)
     return True
 
 
-def _generate_guidance_images(split="train", num_workers=16):
+def _generate_guidance_images(split="train", num_workers=config.NUM_WORKERS):
     """
     Generates guidance images for all input images based on edge maps using parallel processing.
     
