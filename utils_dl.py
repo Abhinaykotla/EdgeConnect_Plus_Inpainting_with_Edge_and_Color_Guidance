@@ -322,8 +322,9 @@ def _generate_edge_maps(split="train", batch_size=config.BATCH_SIZE_G1_INFERENCE
                 edge_path = os.path.join(edge_dir, f"edge_map_{batch_idx * batch_size + j}.jpg")
 
             cv2.imwrite(edge_path, edge_map)
-
-        print(f"Processed batch {batch_idx + 1}/{len(dataloader)}")
+        
+        if batch_idx % 10 == 0:
+            print(f"Processed batch {batch_idx + 1}/{len(dataloader)}")
 
     print(f"Generated edge maps for all input images in {edge_dir}.")
     
@@ -334,13 +335,53 @@ def _generate_edge_maps(split="train", batch_size=config.BATCH_SIZE_G1_INFERENCE
         torch.cuda.empty_cache()
 
 
-def _generate_guidance_images(split="train"):
+def _process_single_guidance_image(args):
     """
-    Generates guidance images for all input images based on edge maps.
+    Process a single image for guidance generation.
+    
+    Args:
+        args: Tuple containing (file, input_dir, edge_dir, guidance_dir)
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    file, input_dir, edge_dir, guidance_dir = args
+    basename = os.path.splitext(file.name)[0]
+    input_path = str(file)  # Convert WindowsPath to string
+    edge_path = os.path.join(edge_dir, f"{basename}_edge_map.jpg")
+    guidance_path = os.path.join(guidance_dir, file.name)
+    
+    # Skip if guidance image already exists
+    if os.path.exists(guidance_path):
+        return False
+        
+    # Read images
+    input_img = cv2.imread(input_path)
+    edge_img = cv2.imread(edge_path, cv2.IMREAD_GRAYSCALE)
+    
+    if input_img is None or edge_img is None:
+        print(f"Warning: Could not read input or edge image for {file.name}")
+        return False
+    
+    # Generate guidance image using input and edge
+    guidance_img = gen_gidance_img(input_img, edge_img)
+    
+    # Save the guidance image
+    cv2.imwrite(guidance_path, guidance_img)
+    return True
+
+
+def _generate_guidance_images(split="train", num_workers=16):
+    """
+    Generates guidance images for all input images based on edge maps using parallel processing.
     
     Args:
         split (str): Dataset split to use ('train', 'test', or 'val').
+        num_workers (int): Number of worker processes to use.
     """
+    import concurrent.futures
+    from tqdm import tqdm
+    
     # Select directories based on the split
     if split == "train":
         input_dir = config.TRAIN_IMAGES_INPUT
@@ -368,33 +409,30 @@ def _generate_guidance_images(split="train"):
     input_files = sorted([f for f in input_path.glob("*.jpg")])
     total_files = len(input_files)
     
-    print(f"Generating guidance images for {total_files} input images...")
+    print(f"Generating guidance images for {total_files} input images using {num_workers} workers...")
     
-    # Process each input image
-    for idx, file in enumerate(input_files):
-        # Get corresponding edge map
-        basename = os.path.splitext(file.name)[0]
-        input_path = str(file)  # Convert WindowsPath to string
-        edge_path = os.path.join(edge_dir, f"{basename}_edge_map.jpg")
-        guidance_path = os.path.join(guidance_dir, file.name)
-        
-        # Read images
-        input_img = cv2.imread(input_path)
-        edge_img = cv2.imread(edge_path, cv2.IMREAD_GRAYSCALE)
-        
-        if input_img is None or edge_img is None:
-            print(f"Warning: Could not read input or edge image for {file.name}")
-            continue
-        
-        # Generate guidance image using input and edge
-        guidance_img = gen_gidance_img(input_img, edge_img)
-        
-        # Save the guidance image
-        cv2.imwrite(guidance_path, guidance_img)
-        
-        # Print progress every 100 files
-        if (idx + 1) % 100 == 0:
-            print(f"Progress: {idx + 1}/{total_files} guidance images generated ({(idx + 1)/total_files*100:.1f}%)")
+    # Prepare argument tuples for each task
+    tasks = [(file, input_dir, edge_dir, guidance_dir) for file in input_files]
     
-    print(f"Generated all {total_files} guidance images in {guidance_dir}.")
+    # Process images in parallel
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_workers) as executor:
+        # Use tqdm to display progress
+        completed = 0
+        failed = 0
+        
+        # Process all tasks with progress tracking
+        results = list(tqdm(
+            executor.map(_process_single_guidance_image, tasks), 
+            total=total_files, 
+            desc="Generating guidance images"
+        ))
+        
+        # Count successes and failures
+        for success in results:
+            if success:
+                completed += 1
+            else:
+                failed += 1
+    
+    print(f"Generated {completed} guidance images in {guidance_dir}. Failed: {failed}.")
 
