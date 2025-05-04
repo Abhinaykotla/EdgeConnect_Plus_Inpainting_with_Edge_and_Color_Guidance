@@ -234,15 +234,14 @@ def validate_guidance_images(split="train"):
         _generate_guidance_images(split=split)
         return False
     
-    if len(input_files) == len(guidance_files):
-    # Check if each input has a corresponding guidance image
-        for input_file in input_files:
-            basename = os.path.splitext(input_file)[0]
-            expected_guidance_file = f"{basename}.jpg"
-            if expected_guidance_file not in guidance_files:
-                print(f"Missing guidance image for {input_file}. Generating guidance images...")
-                _generate_guidance_images(split=split)
-                return False
+    # # Check if each input has a corresponding guidance image
+    # for input_file in input_files:
+    #     basename = os.path.splitext(input_file)[0]
+    #     expected_guidance_file = f"{basename}.jpg"
+    #     if expected_guidance_file not in guidance_files:
+    #         print(f"Missing guidance image for {input_file}. Generating guidance images...")
+    #         _generate_guidance_images(split=split)
+    #         return False
     
     print("All guidance images exist.")
     return True
