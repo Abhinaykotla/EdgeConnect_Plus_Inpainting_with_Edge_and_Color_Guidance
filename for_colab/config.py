@@ -93,7 +93,7 @@ class Config:
         self.LOSS_PLOT_DIR_G2 = os.path.join(self.OUTPUT_DIR, "G2/plots")
         self.G2_MODEL_PATH = os.path.join(self.BASE_DIR, "best_models/g2_best.pth")
 
-        self.BATCH_SIZE_G2 = 64
+        self.BATCH_SIZE_G2 = 66
         self.BATCH_SIZE_G2_INFERENCE = 64
         self.LEARNING_RATE_G2 = 0.0001
         self.D2G_LR_RATIO_G2 = 0.5
