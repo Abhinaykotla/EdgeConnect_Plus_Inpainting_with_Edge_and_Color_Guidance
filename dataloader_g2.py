@@ -158,7 +158,7 @@ def get_dataloader_g2(split="train", batch_size=config.BATCH_SIZE_G2, shuffle=Tr
 
 if __name__ == '__main__':
 
-    train_loader = get_dataloader_g2(split="val")
+    train_loader = get_dataloader_g2(split="train")
 
     for batch in train_loader:
         input_img = batch["input_img"]
