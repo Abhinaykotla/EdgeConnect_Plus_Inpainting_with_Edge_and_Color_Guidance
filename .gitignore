@@ -20,3 +20,4 @@ outputs/stash/
 *.fdb_latexmk
 *.pdf
 tempCodeRunnerFile.py
+outputs\eval_results\evaluation_metrics.csv
