@@ -69,7 +69,7 @@ class Config:
         self.G1_MODEL_PATH = os.path.join(self.BASE_DIR, "best_models/g1_best.pth")
 
         self.BATCH_SIZE_G1 = 20 # 70
-        self.BATCH_SIZE_G1_INFERENCE = 100
+        self.BATCH_SIZE_G1_INFERENCE = 94
         self.LEARNING_RATE_G1 = 0.0001
         self.D2G_LR_RATIO_G1 = 0.3
         self.BETA1 = 0.0
