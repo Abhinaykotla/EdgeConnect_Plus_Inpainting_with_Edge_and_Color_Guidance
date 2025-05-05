@@ -139,19 +139,21 @@ def gen_raw_mask(input_img):
 ####################################################
 
 
-def gen_guidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
+def gen_guidance_img(input_img, edge_img, edge_color=(0, 0, 0), blur_ksize=15):
     """
     Generate a guidance image by:
     1. Using TELEA inpainting on masked regions.
-    2. Overlaying colored edges (e.g., black) across the entire image.
+    2. Applying Gaussian blur to the inpainted regions for smoother transitions.
+    3. Overlaying colored edges (e.g., black) across the entire image.
     
-    This creates a guidance image that combines rough color information (from inpainting)
+    This creates a guidance image that combines smooth color information (from inpainting)
     with structural information (from edges) to guide the G2 inpainting network.
     
     Args:
         input_img (np.ndarray): Masked BGR image, shape (H, W, 3)
         edge_img (np.ndarray): Grayscale predicted edge image, shape (H, W)
         edge_color (tuple): BGR tuple for edge overlay color, default is black (0,0,0)
+        blur_ksize (int): Kernel size for Gaussian blur, controls smoothness
 
     Returns:
         np.ndarray: Guidance image ready for G2 input, shape (H, W, 3)
@@ -165,12 +167,21 @@ def gen_guidance_img(input_img, edge_img, edge_color=(0, 0, 0)):
     inpaint_input = input_img.copy()
     inpaint_input[expanded_mask == 1] = 0  # Set masked regions to black for inpainting
     inpainted_color = cv2.inpaint(inpaint_input, expanded_mask * 255, 15, cv2.INPAINT_TELEA)
+    
+    # Step 2.5: Apply Gaussian blur to the inpainted regions only
+    # This creates smoother transitions in the inpainted areas
+    blurred_color = inpainted_color.copy()
+    blurred_color = cv2.GaussianBlur(blurred_color, (blur_ksize, blur_ksize), 0)
+    
+    # Combine original and blurred images using the mask
+    # Keep original content where mask is valid (0), use blurred content where mask indicates holes (1)
+    final_color = np.where(expanded_mask[:, :, np.newaxis] == 1, blurred_color, input_img)
 
     # Step 3: Overlay edge map across the entire image - not just masked regions
     # Threshold edge map to get binary edges (edge_img < 150 represents edge pixels)
     all_edges = (edge_img < 150)
 
-    guidance_img = inpainted_color.copy()
+    guidance_img = final_color.copy()
     guidance_img[all_edges] = edge_color  # Apply edge overlay with specified color
 
     return guidance_img
