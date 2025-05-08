@@ -210,68 +210,43 @@ class InceptionV3Features:
     """
     Feature extractor based on InceptionV3 for FID calculation.
     
-    Extracts 2048-dimensional feature vectors from the Mixed_7c layer
-    of InceptionV3, which is commonly used for the FID metric.
-    
-    Args:
-        device (torch.device): Device to place the model on ('cuda' or 'cpu')
+    Uses the standard approach for FID: the 2048-dimensional output of the
+    final pooling layer before the classification layer.
     """
     def __init__(self, device):
         self.device = device
-        # Load pretrained Inception model
-        self.inception_model = models.inception_v3(weights='IMAGENET1K_V1', transform_input=False)
-        self.inception_model.fc = torch.nn.Identity()  # Remove classification layer
-        self.inception_model.to(device)
-        self.inception_model.eval()
-        
-        # Register hook to get features
-        self.features = None
-        def hook(module, input, output):
-            self.features = output.detach()
-        
-        # Register the hook on the mixed_7c layer (2048-dim features)
-        # This is a more reliable place to extract features than avgpool
-        self.inception_model.Mixed_7c.register_forward_hook(hook)
+        # Load InceptionV3 pretrained model
+        self.model = models.inception_v3(weights='IMAGENET1K_V1', transform_input=True)
+        # Remove classification layer
+        self.model.fc = torch.nn.Identity()
+        self.model.to(device)
+        self.model.eval()
     
     def get_features(self, images):
         """
-        Extract InceptionV3 features from images for FID calculation.
+        Extract inception features from images.
         
         Args:
-            images (torch.Tensor): Input images of shape [B, 3, H, W]
-                                  in range [0,1] or [-1,1]
+            images (torch.Tensor): Batch of images, shape [B, 3, H, W], range [0,1]
         
         Returns:
-            torch.Tensor: Feature vectors of shape [B, 2048]
+            torch.Tensor: Features of shape [B, 2048]
         """
-        # Resize images to Inception input size (299x299)
-        if images.shape[2] != 299 or images.shape[3] != 299:
-            images = torch.nn.functional.interpolate(images, size=(299, 299), mode='bilinear', align_corners=False)
-        
-        # Ensure values are in [0, 1] and convert to [-1, 1] for Inception
+        # Ensure images are in the right range [0, 1]
         if images.min() < 0:
             images = (images + 1) / 2  # Convert from [-1, 1] to [0, 1]
+            
+        # Resize to InceptionV3 expected input size (299x299)
+        images = F.interpolate(images, size=(299, 299), mode='bilinear', align_corners=False)
         
-        images = images * 2 - 1  # Convert to [-1, 1] for Inception
-        
-        # Get features through forward pass
         with torch.no_grad():
             try:
-                _ = self.inception_model(images)
+                # Forward pass through the model
+                features = self.model(images)
+                return features
             except Exception as e:
-                print(f"WARNING: Error getting Inception features: {e}")
-                return torch.zeros(images.shape[0], 2048).to(images.device)
-        
-        # Reshape to 2D [batch_size, features]
-        if self.features is not None:
-            # Adaptive pooling to get a fixed-size feature vector
-            features = self.features
-            features = adaptive_avg_pool2d(features, (1, 1))
-            features = features.reshape(features.shape[0], -1)
-            return features
-        else:
-            print("WARNING: No features captured from hook")
-            return torch.zeros(images.shape[0], 2048).to(images.device)
+                print(f"WARNING: Error extracting Inception features: {e}")
+                return torch.zeros(images.shape[0], 2048, device=images.device)
 
 
 def calculate_fid(real_features, fake_features):
@@ -288,40 +263,44 @@ def calculate_fid(real_features, fake_features):
     Returns:
         float: FID score (lower is better)
     """
-    # Convert to numpy and ensure features are properly shaped
+    # Convert to numpy
     real_features = real_features.cpu().numpy()
     fake_features = fake_features.cpu().numpy()
     
-    # Reshape if needed - we need 2D arrays for covariance calculation
-    # Typically, Inception features are [batch_size, num_features, 1, 1] or similar
+    # Ensure features are properly shaped for covariance calculation
     if real_features.ndim > 2:
         real_features = real_features.reshape(real_features.shape[0], -1)
+    if fake_features.ndim > 2:
         fake_features = fake_features.reshape(fake_features.shape[0], -1)
     
-    # Calculate mean and covariance matrices for both distributions
+    # Calculate mean and covariance statistics
     mu_real = np.mean(real_features, axis=0)
     sigma_real = np.cov(real_features, rowvar=False)
     
     mu_fake = np.mean(fake_features, axis=0)
     sigma_fake = np.cov(fake_features, rowvar=False)
     
-    # Calculate squared L2 norm of mean difference
-    mu_diff = mu_real - mu_fake
+    # Compute squared distance between means
+    mean_diff_squared = np.sum((mu_real - mu_fake) ** 2)
     
-    # Calculate sqrt of product of covariances
-    # Add a small epsilon to the diagonal for numerical stability
-    eps = 1e-6
-    sigma_real = sigma_real + np.eye(sigma_real.shape[0]) * eps
-    sigma_fake = sigma_fake + np.eye(sigma_fake.shape[0]) * eps
+    # Add small epsilon to diagonal for numerical stability
+    epsilon = 1e-6
+    sigma_real += np.eye(sigma_real.shape[0]) * epsilon
+    sigma_fake += np.eye(sigma_fake.shape[0]) * epsilon
     
-    # Calculate matrix square root using the Scipy implementation
-    covmean, _ = linalg.sqrtm(sigma_real @ sigma_fake, disp=False)
+    # Compute matrix sqrt with SVD which is more stable
+    sigma_real_sqrt = linalg.sqrtm(sigma_real)
+    product = np.matmul(sigma_real_sqrt, sigma_fake)
+    product = np.matmul(sigma_real_sqrt, product)
     
-    # Check and correct imaginary component (due to numerical issues)
-    if np.iscomplexobj(covmean):
-        covmean = covmean.real
+    # Numerical stability check for complex numbers
+    if np.iscomplexobj(product):
+        product = product.real
     
-    # FID formula: ||μ_1 - μ_2||^2 + Tr(Σ_1 + Σ_2 - 2√(Σ_1Σ_2))
-    fid = mu_diff @ mu_diff + np.trace(sigma_real + sigma_fake - 2 * covmean)
+    # Calculate trace term
+    trace_term = np.trace(sigma_real + sigma_fake - 2 * linalg.sqrtm(product))
     
-    return fid
+    # FID formula
+    fid = mean_diff_squared + trace_term
+    
+    return float(fid)
