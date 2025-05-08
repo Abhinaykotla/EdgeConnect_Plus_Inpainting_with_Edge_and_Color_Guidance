@@ -32,14 +32,6 @@ def main():
     os.makedirs(config.EVAL_RESULTS_DIR, exist_ok=True)
     save_images = True
 
-    # Load model
-    model = InpaintingGeneratorG2().to(device)
-    checkpoint_path = config.G2_MODEL_PATH
-    print(f"INFO: Loading model from {checkpoint_path}")
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint["g2_state_dict"])
-    model.eval()  # Set model to evaluation mode (disables dropout, batch norm updates)
-
     # Load VGG, LPIPS and Inception models for evaluation metrics
     print("INFO: Loading evaluation models...")
     vgg = VGG16FeatureExtractor().to(device).eval()
@@ -48,8 +40,16 @@ def main():
     inception = InceptionV3Features(device)  # Used for FID calculation
 
     # Load test data
-    test_loader = get_dataloader_g2(split="test", batch_size=config.BATCH_SIZE_G2_INFERENCE)
+    test_loader = get_dataloader_g2(split="val", batch_size=config.BATCH_SIZE_G2_INFERENCE)
     metrics_list = []  # Will hold per-image metrics
+
+    # Load model
+    model = InpaintingGeneratorG2().to(device)
+    checkpoint_path = config.G2_MODEL_PATH
+    print(f"INFO: Loading G2 model from {checkpoint_path}")
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    model.load_state_dict(checkpoint["g2_state_dict"])
+    model.eval()  # Set model to evaluation mode (disables dropout, batch norm updates)
 
     # Lists to store features for FID calculation
     # FID requires feature vectors from the Inception model
