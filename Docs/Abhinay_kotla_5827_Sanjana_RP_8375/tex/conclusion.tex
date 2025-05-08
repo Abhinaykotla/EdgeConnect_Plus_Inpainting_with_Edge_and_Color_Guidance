@@ -1,0 +1,10 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+In this paper, we presented \textbf{EdgeConnect+}, a modular image inpainting framework that extends the original EdgeConnect architecture by incorporating both structural and chromatic guidance. By fusing edge predictions from a dedicated generator with a low-frequency color prior derived via TELEA inpainting, our method enhances visual coherence and semantic alignment in the reconstructed regions.
+
+Through qualitative examples, intermediate visualizations, and training loss analyses, we demonstrated that EdgeConnect+ effectively addresses limitations of structure only models, such as incomplete contour recovery and color inconsistency~\cite{nazeri2019edgeconnect, yu2019free, liu2021pd}. The integration of dual guidance encourages the inpainting generator to synthesize content that aligns with both spatial layout and appearance context.
+
+Although our results were obtained after training the second stage generator for only five epochs, the model exhibited stable convergence and encouraging visual performance. This early success highlights the efficiency and promise of our architecture. With extended training and more computational resources, we expect further improvements in detail preservation, texture fidelity, and robustness across diverse scenes.
+
+Looking ahead, EdgeConnect+ offers a flexible foundation for future work. Potential extensions include learning-based color guidance modules, attention enhanced fusion mechanisms, and semantic conditioning via vision language models. By enabling controllable and context-aware image restoration, our approach contributes to advancing the capabilities of deep generative inpainting systems.

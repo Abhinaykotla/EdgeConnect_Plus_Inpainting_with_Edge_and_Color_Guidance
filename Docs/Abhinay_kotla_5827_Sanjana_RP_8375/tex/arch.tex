@@ -1,0 +1,171 @@
+% \documentclass[tikz, border=10pt]{standalone}
+% \usepackage{tikz}
+% \usetikzlibrary{positioning, arrows.meta, decorations.pathreplacing}
+% \usepackage{amsmath}
+% \usepackage{graphicx}
+
+% \begin{document}
+\begin{tikzpicture}[
+    font=\small,
+    conv/.style={draw, fill=blue!20, minimum width=0.4cm, minimum height=1.3cm},
+    convEnc1/.style={conv, minimum height=1.0cm},
+    convEnc2/.style={conv, minimum height=0.6cm},
+    convDec1/.style={conv, minimum height=0.6cm},
+    convDec2/.style={conv, minimum height=0.9cm},
+    res/.style={draw, fill=orange!30, minimum width=0.4cm, minimum height=0.5cm},
+    imagebox/.style={draw=gray!70, fill=gray!20, minimum width=1cm, minimum height=1cm},
+    dconv/.style={draw, fill=blue!10, minimum width=0.5cm},
+    block/.style={draw, fill=red!20, minimum width=1cm, minimum height=0.6cm, align=center},
+    arrow/.style={-Latex, thick},
+    dashedarrow/.style={->, thick, dashed, gray},
+    >=Stealth
+]
+
+
+\begin{scope}[shift={(0,2.8)}]  % Adjust vertical position here
+
+  % Input images (shifted)
+  \node[imagebox] (gray) at (0,0) {\includegraphics[width=1cm]{images/000022_grayscale.png}};
+  \node[imagebox, below=0.2cm of gray] (input) {\includegraphics[width=1cm]{images/000022_edge_map input.jpg}};
+  \node[imagebox, below=0.2cm of input] (mask) {\includegraphics[width=1cm]{images/000022_mask.png}};
+  \node at ([xshift=-1.0cm]mask.west) {Inputs};
+
+  % G1 Encoder (shifted)
+  \node[conv, right=1.2cm of mask] (g1init) {};
+  \node at ([yshift=0.6cm]g1init.north) {H};
+  \node[convEnc1, right=0.3cm of g1init] (g1enc1) {};
+  \node[convEnc2, right=0.3cm of g1enc1] (g1enc2) {};
+  \node at ([yshift=0.6cm]g1enc1.north) {H/2};
+  \node[anchor=west] at ([xshift=1.5cm, yshift=0.6cm]g1enc2.north) {H/4};
+
+\end{scope}
+
+
+% G1 Residual Blocks
+\foreach \i in {1,...,8} {
+  \pgfmathsetmacro\x{3.8 + \i*0.35}
+  \node[res] (g1r\i) at (\x,0) {};
+}
+\draw[decorate,decoration={brace,amplitude=5pt,mirror}]
+  (g1r1.south west) -- (g1r8.south east)
+  node[midway,yshift=-0.6cm] {\footnotesize 8 Dilated Residual Blocks};
+
+% G1 Decoder
+\node[convDec1, right=0.4cm of g1r8] (g1dec1) {};
+\node[convDec2, right=0.3cm of g1dec1] (g1dec2) {};
+\node[conv, right=0.3cm of g1dec2] (g1out) {};
+\node[anchor=west] at ([xshift=0.4cm,yshift=0.6cm]g1dec1.north) {H/2};
+\node[anchor=west] at ([xshift=0.6cm, yshift=0.6cm]g1dec2.north) {H};
+\node[anchor=west, align=center] at ([xshift=0.4cm,yshift=0.6cm]g1out.north) {Edge \\ Generated};
+
+% TELEA Block above color map
+\node[block, above=1.5cm of g1out, xshift=2.7cm] (teleaBlock) {TELEA};
+\node[imagebox, above=0.3cm of teleaBlock] (teleaInput) {\includegraphics[width=1cm]{images/000022.jpg}};
+\node at ($(teleaBlock)!0.5!(teleaInput)$) {\Large +};
+
+% Color Map below TELEA block
+\node[imagebox, right=0.4cm of g1out] (telea) {\includegraphics[width=1cm]{images/000022_edges_gen.jpg}};
+
+\node[anchor=west, align=center] (colormaplabel) at ([xshift=1.0cm, yshift=0.6cm]telea.north) {Color \\ Map};
+
+
+% Fusion
+\node[imagebox, right=0.4cm of telea] (fusion) {\includegraphics[width=1cm]{images/000022_inpainting_no_edge.jpg}};
+\draw[arrow] (teleaInput.south) -- (teleaBlock.north);
+\draw[arrow] (teleaBlock.south) -- (colormaplabel.north);
+\path (telea.east) -- (fusion.west) coordinate[midway] (pluscenter);
+\node at (pluscenter) {+};
+
+% Resulting Guidance
+\node[imagebox, right=0.4cm of fusion] (guidance) {\includegraphics[width=1cm]{images/000022_edges_overlayed.png}};
+\node[align=left] at ([xshift=0cm,yshift=0.6cm]guidance.north) {Guidance \\Image};
+\path (fusion.east) -- (guidance.west) coordinate[midway] (equalcenter);
+\node at (equalcenter) {=};
+
+% G2 Input images
+\node[imagebox, below=0.6cm of guidance] (g2input) {\includegraphics[width=1cm]{images/000022.jpg}};
+\node[imagebox, below=0.2cm of g2input] (g2mask) {\includegraphics[width=1cm]{images/000022_mask.png}};
+
+% Arrows to G2
+\node[conv, right=1.0cm of guidance] (g2init) {};
+\node at ([yshift=0.6cm]g2init.north) {H};
+\draw[arrow] (guidance.east) -- (g2init.west);
+\draw[arrow] (g2input.east) -- ++(0.3,0) |- (g2init.west);
+\draw[arrow] (g2mask.east) -- ++(0.6,0) |- (g2init.west);
+
+% G2 Encoder
+\node[convEnc1, right=0.3cm of g2init] (g2enc1) {};
+\node[convEnc2, right=0.25cm of g2enc1] (g2enc2) {};
+\node at ([yshift=0.6cm]g2enc1.north) {H/2};
+\node[anchor=west] at ([xshift=1.6cm, yshift=0.6cm]g2enc2.north) {H/4};
+
+% G2 Residual Blocks
+\foreach \i in {1,...,8} {
+  \pgfmathsetmacro\x{17.3 + \i*0.35}
+  \node[res] (g2r\i) at (\x,0) {};
+}
+\draw[decorate,decoration={brace,amplitude=5pt,mirror}]
+  (g2r1.south west) -- (g2r8.south east)
+  node[midway,yshift=-0.6cm] {\footnotesize 8 Residual Blocks};
+
+% G2 Decoder
+\node[convDec1, right=0.4cm of g2r8] (g2dec1) {};
+\node[convDec2, right=0.3cm of g2dec1] (g2dec2) {};
+\node[conv, right=0.3cm of g2dec2] (g2out) {};
+\node[anchor=west, align=left] at ([xshift=0.6cm, yshift=0.6cm]g2dec1.north) {H/2};
+\node[anchor=west, align=left] at ([xshift=0.6cm, yshift=0.6cm]g2dec2.north) {H};
+\node[anchor=west, align=left] at ([xshift=0.6cm, yshift=0.6cm]g2out.north) {Output};
+
+% Final image
+\node[imagebox, right=0.4cm of g2out] (final) {\includegraphics[width=1cm]{images/000022_output.png}};
+\draw[arrow] (g2out.east) -- (final.west);
+
+% G1 arrows
+\draw[arrow] (mask.east) -- (g1init.west);
+\draw[arrow] (g1init.east) -- (g1enc1.west);
+\draw[arrow] (g1enc1.east) -- (g1enc2.west);
+\draw[arrow] (g1enc2.east) -- (g1r1.west);
+\draw[arrow] (g1r8.east) -- (g1dec1.west);
+\draw[arrow] (g1dec1.east) -- (g1dec2.west);
+\draw[arrow] (g1dec2.east) -- (g1out.west);
+\draw[arrow] (g1out.east) -- (telea.west);
+
+% G2 arrows
+\draw[arrow] (g2init.east) -- (g2enc1.west);
+\draw[arrow] (g2enc1.east) -- (g2enc2.west);
+\draw[arrow] (g2enc2.east) -- (g2r1.west);
+\draw[arrow] (g2r8.east) -- (g2dec1.west);
+\draw[arrow] (g2dec1.east) -- (g2dec2.west);
+\draw[arrow] (g2dec2.east) -- (g2out.west);
+
+% Discriminator D1
+\begin{scope}[shift={(10.0,-4.8)}]
+  \node at (-0.6, 0.5) {\textbf{D\textsubscript{1}}};
+  \node[dconv, minimum height=1.2cm] (d1_1) at (0,0) {};
+  \node[dconv, minimum height=1.0cm, right=0.1cm of d1_1] (d1_2) {};
+  \node[dconv, minimum height=0.8cm, right=0.1cm of d1_2] (d1_3) {};
+  \node[dconv, minimum height=0.6cm, right=0.1cm of d1_3] (d1_4) {};
+  \node[dconv, minimum height=0.45cm, right=0.1cm of d1_4] (d1_5) {};
+  \draw[arrow] (d1_5.east) -- ++(0.5, 0) node[right] {\small Real/Fake ($\mathcal{L}_{\text{adv},1}$)};
+  \node at (1.7,-1.2) {\small $\mathcal{L}_{\text{G1}} = \lambda_{e1}\mathcal{L}_{\text{L1}} + \lambda_{e2}\mathcal{L}_{\text{adv}} + \lambda_{e3}\mathcal{L}_{\text{FM}}$};
+  \node at (1.7,-2.0) {\small $\mathcal{L}_{\text{D1}} = -\mathcal{L}_{\text{adv}} + \lambda_{gp}\mathcal{L}_{\text{GP}}$};
+\end{scope}
+\draw[arrow] (g1out.south) -- ++(0,-0.8) |- ([yshift=0.2cm]d1_1.west);
+
+% Discriminator D2
+\begin{scope}[shift={(24.2,-4.8)}]
+  \node at (-0.6, 0.5) {\textbf{D\textsubscript{2}}};
+  \node[dconv, minimum height=1.2cm] (d2_1) at (0,0) {};
+  \node[dconv, minimum height=1.0cm, right=0.1cm of d2_1] (d2_2) {};
+  \node[dconv, minimum height=0.8cm, right=0.1cm of d2_2] (d2_3) {};
+  \node[dconv, minimum height=0.6cm, right=0.1cm of d2_3] (d2_4) {};
+  \node[dconv, minimum height=0.45cm, right=0.1cm of d2_4] (d2_5) {};
+  \draw[arrow] (d2_5.east) -- ++(0.5, 0) node[right] {\small Real/Fake ($\mathcal{L}_{\text{adv},2}$)};
+  \node at (2.3,-1.2) {\small $\mathcal{L}_{\text{G2}} = \lambda_{1}\mathcal{L}_{\text{L1}} + \lambda_{2}\mathcal{L}_{\text{adv}} + \lambda_{3}\mathcal{L}_{\text{perc}} + \lambda_{4}\mathcal{L}_{\text{style}} + \lambda_{5}\mathcal{L}_{\text{FM}}$};
+  \node at (2.3,-2.0) {\small $\mathcal{L}_{\text{D2}} = -\mathcal{L}_{\text{adv}} + \lambda_{gp}\mathcal{L}_{\text{GP}}$};
+\end{scope}
+\draw[arrow] (g2out.south) -- ++(0,-0.8) |- ([yshift=0.2cm]d2_1.west);
+
+\end{tikzpicture}
+
+% \end{document}

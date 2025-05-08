@@ -1,0 +1,9 @@
+\section{Problem Statement}
+
+Image inpainting is a longstanding challenge in computer vision, aiming to reconstruct missing or corrupted regions of an image such that the completed output appears both natural and seamless. Traditional methods, including diffusion-based and exemplar-based techniques, are often inadequate for large or irregularly shaped holes, as they fail to preserve high-level semantics and complex structures.
+
+The advent of deep generative models, such as Context Encoders and DeepFill, has significantly advanced the ability to learn semantic priors from large-scale datasets. However, these models frequently exhibit limitations when handling intricate textures, structural alignment, or chromatic consistency. In challenging scenarios such as facial features, man-made structures, or textual regions, artifacts like over-smoothed textures and unnatural color transitions remain common.
+
+EdgeConnect introduced a two-stage pipeline that first predicts structural edges and then performs image completion guided by those edges. Although this framework improves geometric fidelity, it lacks an explicit mechanism for modeling chromatic information. As a result, inpainted regions may suffer from noticeable seams, color bleeding, or inconsistent tones, particularly near the boundaries of missing areas.
+
+In this work, our aim is to address the limitations of structure-only inpainting methods by incorporating both structural and chromatic guidance into the reconstruction process. Specifically, we propose an extension of the EdgeConnect framework with a parallel color guidance stream, represented by a low-frequency blurred color prior. This integrated approach is designed to enforce consistency in both spatial layout and appearance, resulting in inpainted outputs that are perceptually more coherent and visually realistic.

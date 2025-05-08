@@ -1,0 +1,74 @@
+\section{Results}
+\label{sec:results}
+
+This section presents qualitative and quantitative outcomes from the EdgeConnect+ pipeline, covering edge generation, intermediate guidance fusion, full inpainting results, and comparative evaluations.
+
+Figure~\ref{fig:g1_sample1_1} illustrates the output of the edge generation network \(G_1\). The top row displays: (1) input edge map extracted from the masked image, (2) the corresponding binary mask, and (3) the predicted edge map. The bottom row shows the ground truth edge map derived from the unmasked image and its grayscale counterpart. The results highlight \(G_1\)'s ability to reconstruct plausible edge structures despite missing regions.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\textwidth]{images/G1_sample1.png}
+\caption{Edge prediction outputs from \(G_1\). Top: input edges, binary mask, and predicted edges. Bottom: ground truth edge map and grayscale input.}
+\label{fig:g1_sample1_1}
+\end{figure}
+
+Training dynamics for \(G_1\) and its discriminator \(D_1\) are shown in Figure~\ref{fig:loss_trends}. The top subplot visualizes batch-level losses, including L1, adversarial, and feature matching terms, as well as discriminator performance. The bottom subplot presents epoch-wise averages, revealing consistent loss reduction and stable adversarial training.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\textwidth]{images/loss_trends_g1.png}
+\caption{Training loss trends for \(G_1\) and \(D_1\).}
+\label{fig:loss_trends}
+\end{figure}
+
+Figure~\ref{fig:intermediate_outputs} presents the intermediate guidance representations passed to the inpainting network \(G_2\). Each triplet shows: (1) the predicted edge map, (2) the low-frequency color map generated using TELEA inpainting, and (3) a fused overlay combining edges and color. These multimodal cues jointly guide \(G_2\) to synthesize perceptually realistic and structurally coherent completions.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.45\textwidth]{images/intermediate_results.png}
+\caption{Intermediate representations: edge map, blurred color map, and guidance image.}
+\label{fig:intermediate_outputs}
+\end{figure}
+
+Figures~\ref{fig:final_1},~\ref{fig:final_2}, and~\ref{fig:final_results} display complete inpainting outputs from EdgeConnect+. Each result consists of six components: the masked input image (top-left), fused guidance (top-center), and final output (top-right), followed by the binary mask (bottom-left), ground truth image (bottom-center), and pixel-wise absolute difference map (bottom-right). The difference maps, which are largely dark, indicate high alignment between prediction and ground truth, demonstrating the potential of the model for high-quality image reconstruction.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\textwidth]{images/output1.png}
+\caption{Final Generated Output 1}
+\label{fig:final_1}
+\end{figure}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\textwidth]{images/output2.png}
+\caption{Final Generated Output 2}
+\label{fig:final_2}
+\end{figure}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\textwidth]{images/output3.png}
+\caption{\centering \textf{Final Generated Output 3}\\
+\parbox[t]{\linewidth}{Top: masked input, fused guidance, predicted output. Bottom: binary mask, ground truth, and absolute error map.}
+}
+\label{fig:final_results}
+\end{figure}
+
+Figure~\ref{fig:g2_loss_trends} shows loss progression during \(G_2\) training. The top plot tracks batch-level losses: L1, adversarial, perceptual (scaled), style, and feature matching, as well as discriminator classification loss. The bottom plot summarizes average epoch losses, indicating early convergence.
+
+Due to computational constraints, \(G_2\) was trained for only 5 epochs. Nonetheless, early-stage outputs are encouraging and highlight the effectiveness of multimodal guidance. With extended training and hyperparameter tuning, we anticipate further improvements in texture quality, semantic accuracy, and visual coherence.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\linewidth]{images/loss_trends_g2.png}
+\caption{Loss trends for \(G_2\) and \(D_2\) during training.}
+\label{fig:g2_loss_trends}
+\end{figure}
+
+Figure~\ref{fig:comparison_outputs} compares inpainting results from the original EdgeConnect (top) and EdgeConnect+ (bottom) for the same masked input. Although both methods produce plausible completions, EdgeConnect+ shows improved alignment in structure, texture continuity, and color coherence, particularly around fine details such as facial features and background patterns. EdgeConnect sometimes exhibits sharp but semantically inconsistent edges or color mismatches, which EdgeConnect+ mitigates through joint structural and chromatic guidance.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.5\textwidth]{images/output_comp.png}
+\caption{Comparison of inpainting results. Top: EdgeConnect; Bottom: EdgeConnect+.}
+\label{fig:comparison_outputs}
+\end{figure}

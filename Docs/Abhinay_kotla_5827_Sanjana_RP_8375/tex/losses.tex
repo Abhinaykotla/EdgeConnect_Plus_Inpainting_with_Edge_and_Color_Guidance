@@ -1,0 +1,21 @@
+\section{Loss Functions}
+
+EdgeConnect+ employs a combination of loss functions during training to ensure structural accuracy, perceptual realism, and texture consistency. These losses are applied across both stages of the pipeline: edge generation (G1) and image completion (G2).
+
+\subsection{L1 Loss (Pixel-wise Reconstruction)}
+L1 loss computes the mean absolute difference between the predicted and ground truth images (or edges). It encourages pixel-wise accuracy and helps maintain structural alignment.
+
+\subsection{Adversarial Loss}
+We use a non-saturating GAN (NS-GAN) objective to train both G1 and G2. This loss encourages the generators to produce outputs indistinguishable from real data, promoting naturalness in edges and textures.
+
+\subsection{Feature Matching Loss}
+Applied in G1, this loss minimizes the difference between discriminator feature activations for real and generated edge maps, promoting training stability and structural realism.
+
+\subsection{Perceptual Loss}
+Perceptual loss is computed using feature activations from a pretrained VGG16 network~\cite{johnson2016perceptual}. It helps G2 preserve high-level content semantics and overall scene consistency.
+
+\subsection{Style Loss}
+Style loss~\cite{gatys2016image} ensures texture coherence by matching the Gram matrices of feature maps between predicted and ground truth images, helping to preserve texture and fine patterns.
+
+\subsection{Gradient Penalty}
+To enforce Lipschitz continuity and improve training stability, we apply a gradient penalty~\cite{gulrajani2017improved} on the discriminator in the edge generation stage.

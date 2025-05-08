@@ -1,0 +1,14 @@
+\section{Introduction}
+
+Image inpainting is a fundamental task in computer vision that aims to reconstruct missing or corrupted regions in images while preserving visual realism and structural coherence. It has numerous practical applications, including photo restoration, object removal, and creative image editing. Traditional approaches, such as diffusion-based and patch-based methods, often struggle with large missing regions or complex structures, typically producing blurry or semantically inconsistent outputs.
+
+Recent advances in deep learning, particularly the use of Generative Adversarial Networks (GANs)~\cite{goodfellow2014generative}, have significantly improved inpainting performance by enabling models to synthesize plausible content through data-driven feature learning. Among these, EdgeConnect~\cite{nazeri2019edgeconnect} introduced a two-stage approach that first predicts edge maps to guide structural reconstruction before performing texture synthesis. While this method improves geometric coherence, it lacks explicit chromatic modeling, often resulting in color inconsistencies and unnatural transitions near the boundaries of inpainted regions.
+
+To address this limitation, we propose \textbf{EdgeConnect+}, a three-stage inpainting framework that explicitly integrates both structural and chromatic guidance. The first stage employs an edge generation network (\(G_1\)) to predict missing contours using masked edge maps extracted via Canny edge detection, along with grayscale version of the input image and binary masks extracted from the original input image. In the second stage, a low-frequency color prior is introduced by applying the TELEA inpainting algorithm to the masked input. Finally, a guided image completion network (\(G_2\)) synthesizes the inpainted output, conditioned on both the predicted structural edges and the chromatic prior.
+
+Although full training of the model remains ongoing, our framework is designed to yield sharper, more perceptually coherent completions, particularly in facial inpainting tasks where both geometry and color fidelity are critical.
+
+The proposed architecture is generalizable and can be trained on other datasets such as Places2~\cite{places2}, enabling its application across a broader range of inpainting scenarios beyond facial images.
+
+The remainder of this paper is organized as follows: Section~\ref{sec:related_work} reviews related work; Section~\ref{sec:methodology} presents the proposed method; Sections~\ref{sec:training} and~\ref{sec:evaluation} describe the experimental setup and evaluation metrics; Section~\ref{sec:results} discusses the results; and Section~\ref{sec:conclusion} concludes the paper with future research directions. The GitHub repository containing our full code and models can be found at: \footnote{\url{https://github.com/Abhinaykotla/EdgeConnect_Plus_Inpainting_with_Edge_and_Color_Guidance}}.
+
