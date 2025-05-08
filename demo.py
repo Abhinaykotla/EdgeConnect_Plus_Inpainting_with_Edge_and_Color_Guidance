@@ -34,14 +34,6 @@ def main():
 
     print(f"INFO: Results will be saved to: {config.DEMO_RESULTS_DIR}")
 
-    # Load model
-    model = InpaintingGeneratorG2().to(device)
-    checkpoint_path = config.G2_MODEL_PATH
-    print(f"INFO: Loading model from {checkpoint_path}")
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint["g2_state_dict"])
-    model.eval()  # Set model to evaluation mode to disable dropout, batch norm updates, etc.
-
     # Check if demo directories exist and have files
     demo_input_dir = config.DEMO_IMAGES_INPUT
     if not os.path.exists(demo_input_dir):
@@ -62,6 +54,15 @@ def main():
         print(f"ERROR: Loading demo dataset: {e}")
         print("Ensure your demo directories contain valid images.")
         sys.exit(1)
+
+
+    # Load model
+    model = InpaintingGeneratorG2().to(device)
+    checkpoint_path = config.G2_MODEL_PATH
+    print(f"INFO: Loading G2 model from {checkpoint_path}")
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    model.load_state_dict(checkpoint["g2_state_dict"])
+    model.eval()  # Set model to evaluation mode to disable dropout, batch norm updates, etc.
 
     # Disable gradient calculation for inference to save memory and speed up computation
     with torch.no_grad():
