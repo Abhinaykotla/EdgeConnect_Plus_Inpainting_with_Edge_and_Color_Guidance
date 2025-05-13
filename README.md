@@ -42,9 +42,10 @@ Below is the complete architecture diagram showing the flow from input to final 
 ├── utils_g1.py                # Utilities for training G1 (saving, evaluation, etc.)
 ├── utils_g2.py                # Utilities for training G2
 ├── find_lr.py                 # Learning rate finder
+├── demo.py                    # Inference script for testing / demo
+├── evaluate_models.py         # Computes evaluation metrics (PSNR, SSIM, L1, LPIPS, FID)
 ├── requirements.txt           # Python dependencies
-├── README.md                  # This file
-└── results/                   # Output samples and evaluation plots
+└── README.md                  # This file
 ```
 
 ---
@@ -59,7 +60,7 @@ Below is the complete architecture diagram showing the flow from input to final 
 
 ---
 
-## 🚀 Training Setup
+## ⚙️ Training Setup
 
 - Batch Size: 192  
 - Epochs: 25 (G1), 5 (G2)
@@ -74,12 +75,97 @@ Below is the complete architecture diagram showing the flow from input to final 
 
 ---
 
+## 🚀 Getting Started
+
+Follow the steps below to set up and run the EdgeConnect+ inpainting pipeline:
+
+
+### 1️⃣ Clone the Repository
+
+```
+git clone https://github.com/Abhinaykotla/EdgeConnect_Plus_Inpainting_with_Edge_and_Color_Guidance.git
+
+cd EdgeConnect_Plus_Inpainting_with_Edge_and_Color_Guidance
+```
+
+### 2️⃣ Install Dependencies
+
+We recommend using Python ≥ 3.8 and a virtual environment.
+
+```
+pip install -r requirements.txt
+```
+
+### 3️⃣ Prepare the Data
+
+Organize your image data and masks into the following folder structure:
+
+```
+data_archive/
+└── CelebA/
+  ├── train_input/ # masked images
+  ├── train_gt/ # original ground truth images
+  ├── val_input/
+  ├── val_gt/
+  ├── test_input/
+  └── test_gt/
+```
+
+Ensure that:
+- All images are 256×256 `.jpg` files
+- Masked images use white (255,255,255) pixels for missing regions
+
+
+### 4️⃣ Start Training (G1 + G2)
+
+```
+python train.py
+```
+
+- Trains the full pipeline:  
+  - G1 (Edge Generator) + D1 (Discriminator)  
+  - G2 (Inpainting Generator) + D2 (Discriminator)  
+- Inputs:
+  - For G1: grayscale image, canny edge map, binary mask  
+  - For G2: masked RGB image, color guidance (edge + color), binary mask  
+- Outputs:
+  - From G1: Edge maps
+  - From G2: Final inpainted RGB images
+  - Checkpoints, loss curves, sample visualizations in the `models/` folder
+
+To resume training from checkpoints, simply re-run the same command.
+
+### 5️⃣ Run Inference / Testing
+
+To test the trained model on new inputs:
+
+```
+python demo.py
+```
+
+Make sure your test input folder is properly set in `config.py`. The script will:
+- Load the latest checkpoints
+- Generate color guidance
+- Save final inpainted results to `output/` or `models/generated_samples_g2/`
+
+### 6️⃣ Evaluate Results (Optional)
+
+To compute PSNR, SSIM, L1, LPIPS and FID:
+
+```
+python evaluate_models.py
+```
+
+You can customize evaluation parameters and paths in `config.py`.
+ 
+---
+
 ## 🧪 Evaluation Metrics
 
 | Metric       | EdgeConnect | EdgeConnect+ (Ours) |
-|--------------|-------------|----------------------|
+|--------------|-------------|---------------------|
 | **PSNR**     | 25.28       | 25.23               |
-| **SSIM**     | 0.846       | **0.864**           |
+| **SSIM**     | 0.846       | 0.864               |
 | **L1 Loss**  | 3.03%       | 4.83%               |
 | **FID**      | 2.82        | 2.94                |
 | **LPIPS**    | —           | 0.193               |
@@ -119,6 +205,7 @@ Each term captures a different property:
 ### Discriminator Losses
 
 To enforce discriminator regularization and improve GAN stability, **Gradient Penalty (GP)** is added to both D1 and D2.
+
 **Final Discriminator Loss**:
 L_D = −L_adv + λ_gp * L_GP
 
@@ -129,10 +216,10 @@ L_D = −L_adv + λ_gp * L_GP
 EdgeConnect+ lays the groundwork for a powerful dual-guided inpainting framework, and several promising directions remain open for enhancement:
 
 - **Extended Training and Scaling**: With additional computational resources, longer training of the inpainting stage (G2) can unlock finer textures, stronger semantic alignment, and improved generalization.
-- **Semantic Guidance**: Integrating semantic priors or vision-language conditioning can enable more context-aware reconstructions and user-controllable outputs.
-- **Dynamic Fusion Mechanisms**: Future versions may benefit from attention-based or learnable fusion modules, enabling adaptive blending of edge and color cues.
-- **Broader Dataset Adaptation**: While initially focused on facial images, the modular pipeline is well-suited for scaling to more diverse domains including natural scenes (like Places2 dataset), human bodies, or text-aware inpainting.
-- **Learned Color Propagation**: Replacing handcrafted color priors with lightweight, learned alternatives could lead to end-to-end trainable and more expressive guidance representations.
+- **Semantic Conditioning**: Incorporating high-level priors (e.g., segmentation, vision-language models) may enable controllable inpainting.
+- **Learnable Fusion**: Replacing fixed guidance overlays with attention-based or adaptive fusion could enhance flexibility.
+- **Dataset Generalization**: The modular design can extend beyond facial data to natural scenes, bodies, and text-rich contexts.
+- **End-to-End Color Guidance**: Learning color priors instead of handcrafting them may yield more expressive, trainable inputs.
 
 ---
 
@@ -145,12 +232,14 @@ EdgeConnect+ lays the groundwork for a powerful dual-guided inpainting framework
 
 ## 🧠 Citation
 
+```
 @misc{edgeconnectplus2025,
   author = {Abhinay Kotla and Sanjana Ravi Prakash},
   title = {EdgeConnect+: Adversarial Inpainting with Edge and Color Guidance},
   year = {2025},
   note = {University of Texas at Arlington, CSE 6367}
 }
+```
 
 ---
 
