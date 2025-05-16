@@ -34,7 +34,7 @@ Below is the complete architecture diagram showing the flow from input to final 
 ├── dataloader_g1.py           # Dataloader for G1
 ├── dataloader_g2.py           # Dataloader for G2
 ├── g1_model.py                # Generator and Discriminator for G1
-├── g2_model.py                # Generator for G2
+├── g2_model.py                # Generator and Discriminator for G2
 ├── loss_functions.py          # All loss definitions (L1, Adv, FM, Perceptual, Style)
 ├── train_loops_g1.py          # Training loop for G1
 ├── train_loops_g2.py          # Training loop for G2
@@ -110,6 +110,7 @@ data_archive/
   ├── test_input/
   └── test_gt/
 ```
+Input images can be created using random masks with the help of notebooks\celeba_data_prep.ipynb
 
 Ensure that:
 - All images are 256×256 `.jpg` files
