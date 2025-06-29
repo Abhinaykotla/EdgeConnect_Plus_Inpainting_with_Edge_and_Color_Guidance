@@ -3,7 +3,7 @@
 
 EdgeConnect+ is a deep learning-based image inpainting framework that enhances the original [EdgeConnect](https://arxiv.org/abs/1901.00212) model. This project integrates both **edge structure** and **color guidance** to produce perceptually realistic reconstructions of masked images.
 
-📄 [Final Paper (PDF)](EdgeConnectplus_Adversarial_Inpainting_with_Edge_and_Color_Guidance.pdf) 
+📄 [Final Paper (PDF)](EdgeConnectPlus_Adversarial_Inpainting_with_Edge_and_Color_Guidance.pdf) 
 
 ---
 
