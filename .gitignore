@@ -3,15 +3,12 @@ __pycache__/
 *.pyc
 *.jpg
 *.png
-data_archive/*.zip
-data_archive/**/*.zip
 outputs/stash/
 *.pth
 *.tar
 *.gz
 *.json
 *.ini
-*.rar
 *.fls
 *.flv
 *.aux
